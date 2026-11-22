@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cali Quake Relief System</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-copy">
+      <h1>Cali Quake Relief System</h1>
+      <p>A simple traffic-light board to check buildings and help people stay safe after an earthquake in Cali.</p>
+    </div>
+    <div class="hero-actions">
+      <button id="load-drill-btn" type="button" class="btn btn-primary">Load Practice Drill</button>
+      <button id="clear-board-btn" type="button" class="btn btn-secondary">Clear Board</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="traffic-legend" class="legend-bar" aria-label="Traffic light guide">
+      <span class="legend-item"><span class="light-dot light-green"></span><strong>Green:</strong> Safe or standard help</span>
+      <span class="legend-item"><span class="light-dot light-yellow"></span><strong>Yellow:</strong> Wait, check soon, or repair</span>
+      <span class="legend-item"><span class="light-dot light-red"></span><strong>Red:</strong> Danger or help right now!</span>
+    </section>
+
+    <section class="city-status-panel" aria-live="polite">
+      <div>
+        <h2>Overall City Light</h2>
+        <p id="city-light-text">Checking city sectors...</p>
+      </div>
+      <div id="city-light-badge" class="city-badge light-green">Green - Safe</div>
+    </section>
+
+    <p id="status-banner" class="status-banner status-ok" role="status">Loading Cali city rules...</p>
+
+    <section class="panel">
+      <h2>6 Cali City Sectors</h2>
+      <div id="sector-grid" class="sector-grid"></div>
+    </section>
+
+    <section class="forms-grid">
+      <article class="panel">
+        <h2>1. Check a Building (UDGR Inspection)</h2>
+        <p class="panel-hint">Pick the damage level and insurance type to see the safety light and next claim step.</p>
+        <form id="property-form" class="relief-form">
+          <label for="property-name">Building Name or Address</label>
+          <input id="property-name" type="text" placeholder="Example: San Antonio Bakery" required>
+
+          <label for="property-sector">City Sector</label>
+          <select id="property-sector">
+            <option value="economy">Economy</option>
+            <option value="health">Health</option>
+            <option value="infrastructure">Infrastructure</option>
+            <option value="education">Education</option>
+            <option value="logistics">Logistics</option>
+            <option value="housing">Housing</option>
+          </select>
+
+          <label for="property-type">Building Type</label>
+          <select id="property-type">
+            <option value="housing">Housing (Home / Apartment)</option>
+            <option value="commercial">Commercial (Shop / Office)</option>
+          </select>
+
+          <label for="property-damage">Damage Level</label>
+          <select id="property-damage">
+            <option value="none">No Damage (Green)</option>
+            <option value="minor">Minor Damage (Green)</option>
+            <option value="moderate">Moderate Damage (Yellow)</option>
+            <option value="severe">Severe Damage (Red - Evacuate)</option>
+            <option value="collapse">Structural Collapse (Red - Evacuate)</option>
+          </select>
+
+          <label for="property-insurance">Insurance Status</label>
+          <select id="property-insurance">
+            <option value="insured">Insured (Private Policy)</option>
+            <option value="mortgage">Mortgage (Bank Loan)</option>
+            <option value="leasing">Leasing (Rent-to-Own)</option>
+            <option value="uninsured">Uninsured (UDGR Public Aid)</option>
+          </select>
+
+          <button type="submit" class="btn btn-primary">Add Building Check</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <h2>2. Help a Person (Population Triage)</h2>
+        <p class="panel-hint">Young children (&lt;10), seniors (&gt;=60), and people with extra care needs go to the top.</p>
+        <form id="triage-form" class="relief-form">
+          <label for="person-name">Person Name</label>
+          <input id="person-name" type="text" placeholder="Example: Sofia Cruz" required>
+
+          <label for="person-sector">City Sector</label>
+          <select id="person-sector">
+            <option value="health">Health</option>
+            <option value="housing">Housing</option>
+            <option value="education">Education</option>
+            <option value="economy">Economy</option>
+            <option value="infrastructure">Infrastructure</option>
+            <option value="logistics">Logistics</option>
+          </select>
+
+          <label for="person-age">Age (Years: &lt;10, &gt;10, &gt;=18, &gt;=60)</label>
+          <input id="person-age" type="number" min="0" max="120" value="30" required>
+
+          <label for="person-group">Population Group</label>
+          <select id="person-group">
+            <option value="civilian">Civilian</option>
+            <option value="military">Military</option>
+            <option value="prison">Prison</option>
+          </select>
+
+          <fieldset class="checkbox-group">
+            <legend>Extra Care Needs</legend>
+            <label class="check-label" for="flag-disability">
+              <input id="flag-disability" type="checkbox"> Has Disability
+            </label>
+            <label class="check-label" for="flag-vulnerable">
+              <input id="flag-vulnerable" type="checkbox"> Is Vulnerable
+            </label>
+            <label class="check-label" for="flag-special-needs">
+              <input id="flag-special-needs" type="checkbox"> Has Special Needs
+            </label>
+          </fieldset>
+
+          <button type="submit" class="btn btn-primary">Add Person Triage</button>
+        </form>
+      </article>
+    </section>
+
+    <section class="lists-grid">
+      <article class="panel">
+        <h2>Building Checks &amp; Insurance Guide</h2>
+        <p id="property-summary" class="summary-line">Total: 0</p>
+        <div id="property-list" class="record-list"></div>
+      </article>
+
+      <article class="panel">
+        <h2>People Priority Queue (Red First)</h2>
+        <p id="population-summary" class="summary-line">Total: 0</p>
+        <div id="priority-list" class="record-list"></div>
+      </article>
+    </section>
+  </main>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
