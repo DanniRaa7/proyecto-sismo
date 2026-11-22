@@ -1,27 +1,34 @@
 import { PropertyInspection } from '../models/property-inspection.js';
 import { PopulationTriage } from '../models/population-triage.js';
+import { assertInstance, getSortedLightKeys } from '../utils/validators.js';
 
-const TRAFFIC_LIGHT_ORDER = ['red', 'yellow', 'green'];
+const DEFAULT_SAFE_LIGHT = 'green';
 
 function createZeroCounters(keys) {
   return Object.fromEntries(keys.map((key) => [key, 0]));
 }
 
-function countByField(items, keys, getKey) {
+function countByField(items, keys, extractKey) {
   const counts = createZeroCounters(keys);
   items.forEach((item) => {
-    const value = getKey(item);
+    const value = extractKey(item);
     counts[value] = (counts[value] || 0) + 1;
   });
   return counts;
 }
 
-function pickWorstLight(lights) {
-  return TRAFFIC_LIGHT_ORDER.find((light) => lights.includes(light)) || 'green';
+function collectSectorLights(records, sectorKey) {
+  return records
+    .filter((record) => record.sector === sectorKey)
+    .map((record) => record.getTrafficLight());
 }
 
-function buildSectorCounts(lights) {
-  const counts = countByField(lights, TRAFFIC_LIGHT_ORDER, (light) => light);
+function pickWorstLight(lights, orderedLights) {
+  return orderedLights.find((light) => lights.includes(light)) || DEFAULT_SAFE_LIGHT;
+}
+
+function buildSectorCounts(lights, orderedLights) {
+  const counts = countByField(lights, orderedLights, (light) => light);
   return {
     redCount: counts.red,
     yellowCount: counts.yellow,
@@ -36,16 +43,10 @@ function countCareFlags(summaries, flagKeys) {
   );
 }
 
-function assertInstance(item, ExpectedClass, label) {
-  const isValid = item instanceof ExpectedClass;
-  if (!isValid) {
-    throw new Error(`Expected a valid ${label} instance`);
-  }
-}
-
 export class CityAnalytics {
   constructor(rules) {
     this.rules = rules;
+    this.orderedLights = getSortedLightKeys(rules.trafficLights);
     this.inspections = [];
     this.triages = [];
   }
@@ -68,13 +69,10 @@ export class CityAnalytics {
   }
 
   getSectorLights(sectorKey) {
-    const propertyLights = this.inspections
-      .filter((item) => item.sector === sectorKey)
-      .map((item) => item.getTrafficLight());
-    const triageLights = this.triages
-      .filter((item) => item.sector === sectorKey)
-      .map((item) => item.getTrafficLight());
-    return [...propertyLights, ...triageLights];
+    return [
+      ...collectSectorLights(this.inspections, sectorKey),
+      ...collectSectorLights(this.triages, sectorKey),
+    ];
   }
 
   getSectorStatus(sectorKey) {
@@ -84,8 +82,8 @@ export class CityAnalytics {
       sectorKey,
       label: sectorRule.label,
       description: sectorRule.description,
-      trafficLight: pickWorstLight(lights),
-      ...buildSectorCounts(lights),
+      trafficLight: pickWorstLight(lights, this.orderedLights),
+      ...buildSectorCounts(lights, this.orderedLights),
     };
   }
 
@@ -95,7 +93,7 @@ export class CityAnalytics {
 
   getCityTrafficLight() {
     const sectorLights = this.getAllSectorStatuses().map((item) => item.trafficLight);
-    return pickWorstLight(sectorLights);
+    return pickWorstLight(sectorLights, this.orderedLights);
   }
 
   getPropertyReport() {
@@ -103,7 +101,7 @@ export class CityAnalytics {
     return {
       total: items.length,
       evacuationCount: items.filter((item) => item.needsEvacuation).length,
-      trafficLight: countByField(items, TRAFFIC_LIGHT_ORDER, (item) => item.trafficLight),
+      trafficLight: countByField(items, this.orderedLights, (item) => item.trafficLight),
       propertyType: countByField(items, Object.keys(this.rules.propertyTypes), (item) => item.propertyType),
       insuranceStatus: countByField(items, Object.keys(this.rules.insuranceStatuses), (item) => item.insurancePlan.status),
     };
@@ -113,7 +111,7 @@ export class CityAnalytics {
     const items = this.triages.map((item) => item.toSummary());
     return {
       total: items.length,
-      trafficLight: countByField(items, TRAFFIC_LIGHT_ORDER, (item) => item.trafficLight),
+      trafficLight: countByField(items, this.orderedLights, (item) => item.trafficLight),
       ageBracket: countByField(items, Object.keys(this.rules.ageBrackets), (item) => item.ageBracket.key),
       group: countByField(items, Object.keys(this.rules.populationGroups), (item) => item.groupProtocol.key),
       flags: countCareFlags(items, Object.keys(this.rules.vulnerabilityFlags)),

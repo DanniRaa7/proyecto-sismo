@@ -6,26 +6,46 @@ import { TrafficLightView } from './ui/traffic-light-view.js';
 
 const DEFAULT_RULES_PATH = './config/city-rules.yaml';
 
+const APP_ELEMENT_IDS = {
+  propertyForm: 'property-form',
+  propertyName: 'property-name',
+  propertySector: 'property-sector',
+  propertyType: 'property-type',
+  propertyDamage: 'property-damage',
+  propertyInsurance: 'property-insurance',
+  triageForm: 'triage-form',
+  personName: 'person-name',
+  personSector: 'person-sector',
+  personAge: 'person-age',
+  personGroup: 'person-group',
+  flagDisability: 'flag-disability',
+  flagVulnerable: 'flag-vulnerable',
+  flagSpecialNeeds: 'flag-special-needs',
+  loadDrillButton: 'load-drill-btn',
+  clearBoardButton: 'clear-board-btn',
+  statusBanner: 'status-banner',
+};
+
 const SAMPLE_PROPERTY_RECORDS = [
-  { id: 'drill-p1', propertyName: 'Alameda Market', sector: 'economy', propertyType: 'commercial', damageLevel: 'moderate', insuranceStatus: 'leasing' },
-  { id: 'drill-p2', propertyName: 'Central Clinic Annex', sector: 'health', propertyType: 'commercial', damageLevel: 'minor', insuranceStatus: 'insured' },
-  { id: 'drill-p3', propertyName: 'North Bridge Depot', sector: 'infrastructure', propertyType: 'commercial', damageLevel: 'severe', insuranceStatus: 'insured' },
-  { id: 'drill-p4', propertyName: 'Melendez Primary School', sector: 'education', propertyType: 'commercial', damageLevel: 'none', insuranceStatus: 'uninsured' },
-  { id: 'drill-p5', propertyName: 'South Aid Warehouse', sector: 'logistics', propertyType: 'commercial', damageLevel: 'minor', insuranceStatus: 'leasing' },
-  { id: 'drill-p6', propertyName: 'Siloe Family Home', sector: 'housing', propertyType: 'housing', damageLevel: 'collapse', insuranceStatus: 'mortgage' },
+  { id: 'drill-property-1', propertyName: 'West City Market', sector: 'economy', propertyType: 'commercial', damageLevel: 'moderate', insuranceStatus: 'leasing' },
+  { id: 'drill-property-2', propertyName: 'Central Clinic Annex', sector: 'health', propertyType: 'commercial', damageLevel: 'minor', insuranceStatus: 'insured' },
+  { id: 'drill-property-3', propertyName: 'North Bridge Depot', sector: 'infrastructure', propertyType: 'commercial', damageLevel: 'severe', insuranceStatus: 'insured' },
+  { id: 'drill-property-4', propertyName: 'Valley Primary School', sector: 'education', propertyType: 'commercial', damageLevel: 'none', insuranceStatus: 'uninsured' },
+  { id: 'drill-property-5', propertyName: 'South Aid Warehouse', sector: 'logistics', propertyType: 'commercial', damageLevel: 'minor', insuranceStatus: 'leasing' },
+  { id: 'drill-property-6', propertyName: 'Hillside Family Home', sector: 'housing', propertyType: 'housing', damageLevel: 'collapse', insuranceStatus: 'mortgage' },
 ];
 
 const SAMPLE_TRIAGE_RECORDS = [
-  { id: 'drill-t1', fullName: 'Sofia Cruz', sector: 'education', age: 7, group: 'civilian', hasDisability: false, isVulnerable: false, hasSpecialNeeds: false },
-  { id: 'drill-t2', fullName: 'Lucas Perez', sector: 'housing', age: 14, group: 'civilian', hasDisability: false, isVulnerable: true, hasSpecialNeeds: false },
-  { id: 'drill-t3', fullName: 'Elena Ruiz', sector: 'health', age: 72, group: 'civilian', hasDisability: true, isVulnerable: true, hasSpecialNeeds: true },
-  { id: 'drill-t4', fullName: 'Carlos Mina', sector: 'logistics', age: 34, group: 'military', hasDisability: false, isVulnerable: false, hasSpecialNeeds: false },
-  { id: 'drill-t5', fullName: 'Diego Toro', sector: 'infrastructure', age: 41, group: 'prison', hasDisability: false, isVulnerable: false, hasSpecialNeeds: false },
-  { id: 'drill-t6', fullName: 'Marta Leon', sector: 'economy', age: 29, group: 'civilian', hasDisability: false, isVulnerable: false, hasSpecialNeeds: false },
+  { id: 'drill-person-1', fullName: 'Emma Clark', sector: 'education', age: 7, group: 'civilian', hasDisability: false, isVulnerable: false, hasSpecialNeeds: false },
+  { id: 'drill-person-2', fullName: 'Lucas Reed', sector: 'housing', age: 14, group: 'civilian', hasDisability: false, isVulnerable: true, hasSpecialNeeds: false },
+  { id: 'drill-person-3', fullName: 'Grace Miller', sector: 'health', age: 72, group: 'civilian', hasDisability: true, isVulnerable: true, hasSpecialNeeds: true },
+  { id: 'drill-person-4', fullName: 'Daniel Brooks', sector: 'logistics', age: 34, group: 'military', hasDisability: false, isVulnerable: false, hasSpecialNeeds: false },
+  { id: 'drill-person-5', fullName: 'Owen Carter', sector: 'infrastructure', age: 41, group: 'prison', hasDisability: false, isVulnerable: false, hasSpecialNeeds: false },
+  { id: 'drill-person-6', fullName: 'Hannah Price', sector: 'economy', age: 29, group: 'civilian', hasDisability: false, isVulnerable: false, hasSpecialNeeds: false },
 ];
 
-export async function loadCityRules(fetchFn, rulesPath = DEFAULT_RULES_PATH) {
-  const response = await fetchFn(rulesPath);
+export async function loadCityRules(fetchClient, rulesPath = DEFAULT_RULES_PATH) {
+  const response = await fetchClient(rulesPath);
   const isResponseOk = Boolean(response && response.ok);
   if (!isResponseOk) {
     throw new Error(`Unable to load city rules from ${rulesPath}`);
@@ -40,31 +60,38 @@ export function createSampleDrill(rules) {
   };
 }
 
-function readPropertyForm(doc) {
+function readPropertyForm(documentRef) {
   return {
-    propertyName: doc.getElementById('property-name').value,
-    sector: doc.getElementById('property-sector').value,
-    propertyType: doc.getElementById('property-type').value,
-    damageLevel: doc.getElementById('property-damage').value,
-    insuranceStatus: doc.getElementById('property-insurance').value,
+    propertyName: documentRef.getElementById(APP_ELEMENT_IDS.propertyName).value,
+    sector: documentRef.getElementById(APP_ELEMENT_IDS.propertySector).value,
+    propertyType: documentRef.getElementById(APP_ELEMENT_IDS.propertyType).value,
+    damageLevel: documentRef.getElementById(APP_ELEMENT_IDS.propertyDamage).value,
+    insuranceStatus: documentRef.getElementById(APP_ELEMENT_IDS.propertyInsurance).value,
   };
 }
 
-function readTriageForm(doc) {
+function readTriageForm(documentRef) {
   return {
-    fullName: doc.getElementById('person-name').value,
-    sector: doc.getElementById('person-sector').value,
-    age: Number(doc.getElementById('person-age').value),
-    group: doc.getElementById('person-group').value,
-    hasDisability: Boolean(doc.getElementById('flag-disability').checked),
-    isVulnerable: Boolean(doc.getElementById('flag-vulnerable').checked),
-    hasSpecialNeeds: Boolean(doc.getElementById('flag-special-needs').checked),
+    fullName: documentRef.getElementById(APP_ELEMENT_IDS.personName).value,
+    sector: documentRef.getElementById(APP_ELEMENT_IDS.personSector).value,
+    age: Number(documentRef.getElementById(APP_ELEMENT_IDS.personAge).value),
+    group: documentRef.getElementById(APP_ELEMENT_IDS.personGroup).value,
+    hasDisability: Boolean(documentRef.getElementById(APP_ELEMENT_IDS.flagDisability).checked),
+    isVulnerable: Boolean(documentRef.getElementById(APP_ELEMENT_IDS.flagVulnerable).checked),
+    hasSpecialNeeds: Boolean(documentRef.getElementById(APP_ELEMENT_IDS.flagSpecialNeeds).checked),
   };
 }
 
-function bindListener(doc, elementId, eventName, handler) {
-  const element = doc.getElementById(elementId);
-  if (element) element.addEventListener(eventName, handler);
+function bindListener(documentRef, elementId, eventName, handler) {
+  const element = documentRef.getElementById(elementId);
+  const hasElement = Boolean(element);
+  if (hasElement) element.addEventListener(eventName, handler);
+}
+
+function reportBootError(error) {
+  const banner = document.getElementById(APP_ELEMENT_IDS.statusBanner);
+  const hasBanner = Boolean(banner);
+  if (hasBanner) banner.textContent = error.message;
 }
 
 export class QuakeReliefApp {
@@ -76,12 +103,16 @@ export class QuakeReliefApp {
   }
 
   init() {
-    bindListener(this.documentRef, 'property-form', 'submit', (event) => this.handlePropertySubmit(event));
-    bindListener(this.documentRef, 'triage-form', 'submit', (event) => this.handleTriageSubmit(event));
-    bindListener(this.documentRef, 'load-drill-btn', 'click', () => this.handleLoadDrill());
-    bindListener(this.documentRef, 'clear-board-btn', 'click', () => this.handleClearBoard());
+    bindListener(this.documentRef, APP_ELEMENT_IDS.propertyForm, 'submit', (event) => this.handlePropertySubmit(event));
+    bindListener(this.documentRef, APP_ELEMENT_IDS.triageForm, 'submit', (event) => this.handleTriageSubmit(event));
+    bindListener(this.documentRef, APP_ELEMENT_IDS.loadDrillButton, 'click', () => this.handleLoadDrill());
+    bindListener(this.documentRef, APP_ELEMENT_IDS.clearBoardButton, 'click', () => this.handleClearBoard());
+    this.refreshBoard('Board is ready. All 6 Cali sectors are currently Green.');
+  }
+
+  refreshBoard(message, isError = false) {
     this.view.renderSnapshot(this.analytics.getDashboardSnapshot());
-    this.view.renderFeedback('Board is ready. All 6 Cali sectors are currently Green.', false);
+    this.view.renderFeedback(message, isError);
   }
 
   runFormAction(event, formId, action, successMessage) {
@@ -89,8 +120,7 @@ export class QuakeReliefApp {
     try {
       action();
       this.documentRef.getElementById(formId).reset();
-      this.view.renderSnapshot(this.analytics.getDashboardSnapshot());
-      this.view.renderFeedback(successMessage, false);
+      this.refreshBoard(successMessage, false);
     } catch (error) {
       this.view.renderFeedback(error.message, true);
     }
@@ -101,7 +131,7 @@ export class QuakeReliefApp {
       const record = readPropertyForm(this.documentRef);
       this.analytics.addPropertyInspection(new PropertyInspection(record, this.rules));
     };
-    this.runFormAction(event, 'property-form', addInspection, 'Building inspection added to the relief board.');
+    this.runFormAction(event, APP_ELEMENT_IDS.propertyForm, addInspection, 'Building inspection added to the relief board.');
   }
 
   handleTriageSubmit(event) {
@@ -109,7 +139,7 @@ export class QuakeReliefApp {
       const record = readTriageForm(this.documentRef);
       this.analytics.addPopulationTriage(new PopulationTriage(record, this.rules));
     };
-    this.runFormAction(event, 'triage-form', addTriage, 'Person added to the priority triage queue.');
+    this.runFormAction(event, APP_ELEMENT_IDS.triageForm, addTriage, 'Person added to the priority triage queue.');
   }
 
   handleLoadDrill() {
@@ -117,19 +147,17 @@ export class QuakeReliefApp {
     const drill = createSampleDrill(this.rules);
     drill.inspections.forEach((item) => this.analytics.addPropertyInspection(item));
     drill.triages.forEach((item) => this.analytics.addPopulationTriage(item));
-    this.view.renderSnapshot(this.analytics.getDashboardSnapshot());
-    this.view.renderFeedback('Practice drill loaded across all 6 Cali sectors.', false);
+    this.refreshBoard('Practice drill loaded across all 6 Cali sectors.');
   }
 
   handleClearBoard() {
     this.analytics.clearAll();
-    this.view.renderSnapshot(this.analytics.getDashboardSnapshot());
-    this.view.renderFeedback('Board cleared. All 6 sectors are back to Green.', false);
+    this.refreshBoard('Board cleared. All 6 sectors are back to Green.');
   }
 }
 
-export async function bootstrapApp(documentRef, fetchFn) {
-  const rules = await loadCityRules(fetchFn);
+export async function bootstrapApp(documentRef, fetchClient) {
+  const rules = await loadCityRules(fetchClient);
   const analytics = new CityAnalytics(rules);
   const view = new TrafficLightView(documentRef, rules);
   const app = new QuakeReliefApp(documentRef, analytics, view, rules);
@@ -140,10 +168,7 @@ export async function bootstrapApp(documentRef, fetchFn) {
 function autoStartBrowser() {
   const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
   if (!isBrowser) return;
-  bootstrapApp(document, window.fetch.bind(window)).catch((error) => {
-    const banner = document.getElementById('status-banner');
-    if (banner) banner.textContent = error.message;
-  });
+  bootstrapApp(document, window.fetch.bind(window)).catch(reportBootError);
 }
 
 autoStartBrowser();

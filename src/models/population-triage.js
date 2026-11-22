@@ -1,36 +1,24 @@
+import {
+  assertLookupKey,
+  assertNonEmptyText,
+  assertNumberInRange,
+  getSortedLightKeys,
+} from '../utils/validators.js';
+
 const DEFAULT_PERSON_PREFIX = 'person';
-const CARE_FLAG_KEYS = ['hasDisability', 'isVulnerable', 'hasSpecialNeeds'];
-const TRAFFIC_LIGHT_PRIORITY = ['red', 'yellow', 'green'];
-
-function assertLookupKey(map, key, fieldName) {
-  const isPresent = Boolean(map && Object.hasOwn(map, key));
-  if (!isPresent) {
-    throw new Error(`Invalid ${fieldName}: ${key}`);
-  }
-}
-
-function assertValidAge(age, limits) {
-  const isNumber = typeof age === 'number' && !Number.isNaN(age);
-  const isInRange = isNumber && age >= limits.minAge && age <= limits.maxAge;
-  if (!isInRange) {
-    throw new Error(`Invalid age: ${age}`);
-  }
-}
+const URGENT_TRAFFIC_LIGHT = 'red';
 
 function validateTriageRecord(record, rules) {
-  const hasName = typeof record.fullName === 'string' && record.fullName.trim().length > 0;
-  if (!hasName) throw new Error('Missing required fullName');
+  assertNonEmptyText(record.fullName, 'fullName');
   assertLookupKey(rules.sectors, record.sector, 'sector');
   assertLookupKey(rules.populationGroups, record.group, 'group');
-  assertValidAge(record.age, rules.limits);
+  assertNumberInRange(record.age, rules.limits.minAge, rules.limits.maxAge, 'age');
 }
 
-function extractCareFlags(record) {
-  return {
-    hasDisability: Boolean(record.hasDisability),
-    isVulnerable: Boolean(record.isVulnerable),
-    hasSpecialNeeds: Boolean(record.hasSpecialNeeds),
-  };
+function extractCareFlags(record, flagKeys) {
+  return Object.fromEntries(
+    flagKeys.map((flagKey) => [flagKey, Boolean(record[flagKey])])
+  );
 }
 
 export class PopulationTriage {
@@ -41,7 +29,7 @@ export class PopulationTriage {
     this.sector = record.sector;
     this.age = record.age;
     this.group = record.group;
-    this.flags = extractCareFlags(record);
+    this.flags = extractCareFlags(record, Object.keys(rules.vulnerabilityFlags));
     this.rules = rules;
   }
 
@@ -59,7 +47,7 @@ export class PopulationTriage {
   }
 
   getActiveFlags() {
-    return CARE_FLAG_KEYS.filter((flagKey) => this.flags[flagKey]);
+    return Object.keys(this.flags).filter((flagKey) => this.flags[flagKey]);
   }
 
   getPriorityScore() {
@@ -73,13 +61,12 @@ export class PopulationTriage {
   getTrafficLight() {
     const score = this.getPriorityScore();
     const thresholds = this.rules.triageThresholds;
-    return TRAFFIC_LIGHT_PRIORITY.find(
-      (light) => score >= thresholds[light].minScore
-    );
+    const orderedLights = getSortedLightKeys(this.rules.trafficLights);
+    return orderedLights.find((light) => score >= thresholds[light].minScore);
   }
 
   needsImmediateHelp() {
-    return this.getTrafficLight() === 'red';
+    return this.getTrafficLight() === URGENT_TRAFFIC_LIGHT;
   }
 
   getIdentityFields() {

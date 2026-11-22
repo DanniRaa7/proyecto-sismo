@@ -7,8 +7,24 @@ const HTML_ESCAPE_MAP = {
 };
 
 const FEEDBACK_CLASS_MAP = {
-  true: 'status-banner status-error',
-  false: 'status-banner status-ok',
+  error: 'status-banner status-error',
+  success: 'status-banner status-ok',
+};
+
+const VIEW_ELEMENT_IDS = {
+  cityBadge: 'city-light-badge',
+  cityText: 'city-light-text',
+  sectorGrid: 'sector-grid',
+  propertySummary: 'property-summary',
+  propertyList: 'property-list',
+  populationSummary: 'population-summary',
+  priorityList: 'priority-list',
+  statusBanner: 'status-banner',
+};
+
+const EMPTY_LIST_MESSAGES = {
+  properties: 'No buildings checked yet. Add one above or load the practice drill.',
+  triages: 'No people registered yet. Add one above or load the practice drill.',
 };
 
 function escapeHtml(text) {
@@ -20,24 +36,42 @@ function buildEmptyNotice(message) {
 }
 
 function buildRecordHeader(title, lightKey, badgeText) {
-  return `<div class="record-head"><strong>${escapeHtml(title)}</strong><span class="pill light-${lightKey}">${escapeHtml(badgeText)}</span></div>`;
+  const safeTitle = escapeHtml(title);
+  const safeBadge = escapeHtml(badgeText);
+  return `<div class="record-head"><strong>${safeTitle}</strong><span class="pill light-${lightKey}">${safeBadge}</span></div>`;
+}
+
+function buildSectorBody(sector, lightLabel) {
+  const counts = `Red: ${sector.redCount} | Yellow: ${sector.yellowCount} | Green: ${sector.greenCount}`;
+  return [
+    `<p class="sector-desc">${escapeHtml(sector.description)}</p>`,
+    `<p class="sector-status">${escapeHtml(lightLabel)}</p>`,
+    `<p class="sector-counts">${counts}</p>`,
+  ].join('');
 }
 
 function buildSectorCard(sector, lightRules) {
   const lightLabel = lightRules[sector.trafficLight].label;
-  const counts = `Red: ${sector.redCount} | Yellow: ${sector.yellowCount} | Green: ${sector.greenCount}`;
   const top = `<div class="sector-top"><span class="light-dot light-${sector.trafficLight}"></span><strong>${escapeHtml(sector.label)}</strong></div>`;
-  const body = `<p class="sector-desc">${escapeHtml(sector.description)}</p><p class="sector-status">${escapeHtml(lightLabel)}</p><p class="sector-counts">${counts}</p>`;
+  const body = buildSectorBody(sector, lightLabel);
   return `<article class="sector-card light-${sector.trafficLight}">${top}${body}</article>`;
+}
+
+function buildPropertyDetail(item) {
+  const plan = item.insurancePlan;
+  const route = `<strong>${escapeHtml(plan.claimRoute)}</strong> (${escapeHtml(plan.responsibleAgency)})`;
+  return [
+    `<p class="record-note">${escapeHtml(item.guidance)}</p>`,
+    `<p class="record-action">${route}: ${escapeHtml(plan.nextStep)}</p>`,
+  ].join('');
 }
 
 function buildPropertyCard(item, rules) {
   const sectorLabel = rules.sectors[item.sector].label;
   const lightLabel = rules.trafficLights[item.trafficLight].label;
-  const plan = item.insurancePlan;
   const head = buildRecordHeader(item.propertyName, item.trafficLight, lightLabel);
   const meta = `<p class="record-meta">${escapeHtml(sectorLabel)} | ${escapeHtml(item.propertyType)} | Damage: ${escapeHtml(item.damageLevel)}</p>`;
-  const detail = `<p class="record-note">${escapeHtml(item.guidance)}</p><p class="record-action"><strong>${escapeHtml(plan.claimRoute)}</strong> (${escapeHtml(plan.responsibleAgency)}): ${escapeHtml(plan.nextStep)}</p>`;
+  const detail = buildPropertyDetail(item);
   return `<article class="record-card light-${item.trafficLight}">${head}${meta}${detail}</article>`;
 }
 
@@ -46,35 +80,44 @@ function buildCareFlagText(activeFlags, flagRules) {
   return labels.length ? labels.join(', ') : 'None';
 }
 
+function buildTriageDetail(item, flagRules) {
+  const flagsText = buildCareFlagText(item.activeFlags, flagRules);
+  const protocol = `<strong>${escapeHtml(item.groupProtocol.protocol)}</strong>`;
+  const authority = escapeHtml(item.groupProtocol.authority);
+  return [
+    `<p class="record-note">Care flags: ${escapeHtml(flagsText)}</p>`,
+    `<p class="record-action">${protocol} - ${authority}</p>`,
+  ].join('');
+}
+
 function buildTriageCard(item, rules) {
   const sectorLabel = rules.sectors[item.sector].label;
   const badgeText = `${rules.trafficLights[item.trafficLight].label} (Score ${item.priorityScore})`;
-  const flagsText = buildCareFlagText(item.activeFlags, rules.vulnerabilityFlags);
   const head = buildRecordHeader(item.fullName, item.trafficLight, badgeText);
   const meta = `<p class="record-meta">${escapeHtml(sectorLabel)} | Age ${item.age} (${escapeHtml(item.ageBracket.ruleTag)}) | Group: ${escapeHtml(item.groupProtocol.label)}</p>`;
-  const detail = `<p class="record-note">Care flags: ${escapeHtml(flagsText)}</p><p class="record-action"><strong>${escapeHtml(item.groupProtocol.protocol)}</strong> - ${escapeHtml(item.groupProtocol.authority)}</p>`;
+  const detail = buildTriageDetail(item, rules.vulnerabilityFlags);
   return `<article class="record-card light-${item.trafficLight}">${head}${meta}${detail}</article>`;
 }
 
 function buildPropertyStats(report) {
-  const ins = report.insuranceStatus;
+  const insuranceCounts = report.insuranceStatus;
   return [
     `Total: ${report.total}`,
     `Evacuate: ${report.evacuationCount}`,
-    `Insured: ${ins.insured}`,
-    `Mortgage: ${ins.mortgage}`,
-    `Leasing: ${ins.leasing}`,
-    `Uninsured: ${ins.uninsured}`,
+    `Insured: ${insuranceCounts.insured}`,
+    `Mortgage: ${insuranceCounts.mortgage}`,
+    `Leasing: ${insuranceCounts.leasing}`,
+    `Uninsured: ${insuranceCounts.uninsured}`,
   ].join(' | ');
 }
 
 function buildPopulationStats(report) {
-  const age = report.ageBracket;
-  const grp = report.group;
+  const ageCounts = report.ageBracket;
+  const groupCounts = report.group;
   return [
     `Total: ${report.total}`,
-    `<10: ${age.underTen} | >10: ${age.youth} | >=18: ${age.adult} | >=60: ${age.senior}`,
-    `Civilian: ${grp.civilian} | Military: ${grp.military} | Prison: ${grp.prison}`,
+    `<10: ${ageCounts.underTen} | >10: ${ageCounts.youth} | >=18: ${ageCounts.adult} | >=60: ${ageCounts.senior}`,
+    `Civilian: ${groupCounts.civilian} | Military: ${groupCounts.military} | Prison: ${groupCounts.prison}`,
   ].join(' | ');
 }
 
@@ -84,40 +127,51 @@ export class TrafficLightView {
     this.rules = rules;
   }
 
-  getElement(id) {
-    return this.documentRef.getElementById(id);
+  getElement(elementId) {
+    return this.documentRef.getElementById(elementId);
   }
 
   renderCityLight(lightKey) {
-    const info = this.rules.trafficLights[lightKey];
-    const badge = this.getElement('city-light-badge');
-    const text = this.getElement('city-light-text');
+    const lightRule = this.rules.trafficLights[lightKey];
+    const badge = this.getElement(VIEW_ELEMENT_IDS.cityBadge);
+    const text = this.getElement(VIEW_ELEMENT_IDS.cityText);
     badge.className = `city-badge light-${lightKey}`;
-    badge.textContent = info.label;
-    text.textContent = `${info.meaning}. ${info.action}.`;
+    badge.textContent = lightRule.label;
+    text.textContent = `${lightRule.meaning}. ${lightRule.action}.`;
   }
 
   renderSectors(sectors) {
-    const grid = this.getElement('sector-grid');
+    const grid = this.getElement(VIEW_ELEMENT_IDS.sectorGrid);
     grid.innerHTML = sectors
       .map((sector) => buildSectorCard(sector, this.rules.trafficLights))
       .join('');
   }
 
+  renderCardList(elementId, items, buildCard, emptyMessage) {
+    const listElement = this.getElement(elementId);
+    listElement.innerHTML = items.length
+      ? items.map(buildCard).join('')
+      : buildEmptyNotice(emptyMessage);
+  }
+
   renderProperties(inspections, report) {
-    this.getElement('property-summary').textContent = buildPropertyStats(report);
-    const list = this.getElement('property-list');
-    list.innerHTML = inspections.length
-      ? inspections.map((item) => buildPropertyCard(item, this.rules)).join('')
-      : buildEmptyNotice('No buildings checked yet. Add one above or load the practice drill.');
+    this.getElement(VIEW_ELEMENT_IDS.propertySummary).textContent = buildPropertyStats(report);
+    this.renderCardList(
+      VIEW_ELEMENT_IDS.propertyList,
+      inspections,
+      (item) => buildPropertyCard(item, this.rules),
+      EMPTY_LIST_MESSAGES.properties
+    );
   }
 
   renderTriages(queue, report) {
-    this.getElement('population-summary').textContent = buildPopulationStats(report);
-    const list = this.getElement('priority-list');
-    list.innerHTML = queue.length
-      ? queue.map((item) => buildTriageCard(item, this.rules)).join('')
-      : buildEmptyNotice('No people registered yet. Add one above or load the practice drill.');
+    this.getElement(VIEW_ELEMENT_IDS.populationSummary).textContent = buildPopulationStats(report);
+    this.renderCardList(
+      VIEW_ELEMENT_IDS.priorityList,
+      queue,
+      (item) => buildTriageCard(item, this.rules),
+      EMPTY_LIST_MESSAGES.triages
+    );
   }
 
   renderSnapshot(snapshot) {
@@ -128,8 +182,9 @@ export class TrafficLightView {
   }
 
   renderFeedback(message, isError = false) {
-    const banner = this.getElement('status-banner');
-    banner.className = FEEDBACK_CLASS_MAP[Boolean(isError)];
+    const banner = this.getElement(VIEW_ELEMENT_IDS.statusBanner);
+    const statusKey = isError ? 'error' : 'success';
+    banner.className = FEEDBACK_CLASS_MAP[statusKey];
     banner.textContent = message;
   }
 }

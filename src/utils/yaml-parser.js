@@ -6,17 +6,31 @@ const BOOLEAN_MAP = {
 const QUOTE_PATTERN = /^["'](.*)["']$/;
 const NUMBER_PATTERN = /^-?\d+(\.\d+)?$/;
 
+const SCALAR_STRATEGIES = [
+  {
+    isMatch: (value) => QUOTE_PATTERN.test(value),
+    parse: (value) => value.match(QUOTE_PATTERN)[1],
+  },
+  {
+    isMatch: (value) => Object.hasOwn(BOOLEAN_MAP, value),
+    parse: (value) => BOOLEAN_MAP[value],
+  },
+  {
+    isMatch: (value) => NUMBER_PATTERN.test(value),
+    parse: (value) => Number(value),
+  },
+];
+
 function isActiveYamlLine(line) {
   const trimmed = line.trim();
-  return Boolean(trimmed) && !trimmed.startsWith('#');
+  const hasText = trimmed.length > 0;
+  const isComment = trimmed.startsWith('#');
+  return hasText && !isComment;
 }
 
 function parseScalarValue(rawValue) {
-  const quotedMatch = rawValue.match(QUOTE_PATTERN);
-  if (quotedMatch) return quotedMatch[1];
-  if (Object.hasOwn(BOOLEAN_MAP, rawValue)) return BOOLEAN_MAP[rawValue];
-  if (NUMBER_PATTERN.test(rawValue)) return Number(rawValue);
-  return rawValue;
+  const strategy = SCALAR_STRATEGIES.find((item) => item.isMatch(rawValue));
+  return strategy ? strategy.parse(rawValue) : rawValue;
 }
 
 function splitYamlEntry(line) {
@@ -38,7 +52,8 @@ function unwindStack(stack, indent) {
 function applyYamlLine(stack, line) {
   const { indent, key, rawValue } = splitYamlEntry(line);
   const parent = unwindStack(stack, indent);
-  if (rawValue) {
+  const hasInlineValue = rawValue.length > 0;
+  if (hasInlineValue) {
     parent[key] = parseScalarValue(rawValue);
     return;
   }

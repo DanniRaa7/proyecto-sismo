@@ -1,18 +1,6 @@
+import { assertLookupKey, assertNonEmptyText } from '../utils/validators.js';
+
 const DEFAULT_PROPERTY_PREFIX = 'prop';
-
-function assertLookupKey(map, key, fieldName) {
-  const isPresent = Boolean(map && Object.hasOwn(map, key));
-  if (!isPresent) {
-    throw new Error(`Invalid ${fieldName}: ${key}`);
-  }
-}
-
-function assertNonEmptyText(value, fieldName) {
-  const isValidText = typeof value === 'string' && value.trim().length > 0;
-  if (!isValidText) {
-    throw new Error(`Missing required ${fieldName}`);
-  }
-}
 
 function validatePropertyRecord(record, rules) {
   assertNonEmptyText(record.propertyName, 'propertyName');

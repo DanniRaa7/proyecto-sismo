@@ -33,6 +33,7 @@ cali-quake-relief-system/
 │   └── city-rules.yaml               # Single source of truth for all rules, weights, and labels
 ├── src/
 │   ├── utils/
+│   │   ├── validators.js             # Shared input validation and YAML rank helpers
 │   │   └── yaml-parser.js            # Zero-dependency parser for config/city-rules.yaml
 │   ├── models/
 │   │   ├── property-inspection.js    # UDGR building inspection and insurance claim strategy model
