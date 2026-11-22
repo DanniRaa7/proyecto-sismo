@@ -1,0 +1,10 @@
+{
+  "name": "cali-quake-relief-system",
+  "version": "1.0.0",
+  "description": "Simple traffic-light earthquake relief board for the city of Cali in Vanilla JavaScript",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/quake-system.test.js"
+  },
+  "license": "MIT"
+}

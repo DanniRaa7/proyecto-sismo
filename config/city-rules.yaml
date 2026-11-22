@@ -1,0 +1,169 @@
+# Cali Quake Relief System - City Rules and Constants
+# Single source of truth for sectors, UDGR inspections, insurance routes, and triage.
+
+trafficLights:
+  green:
+    label: Green - Safe
+    meaning: Safe or standard aid
+    action: Stay calm and follow local updates
+    rank: 1
+  yellow:
+    label: Yellow - Caution
+    meaning: Check soon or repair needed
+    action: Limit entry and prepare support
+    rank: 2
+  red:
+    label: Red - Urgent
+    meaning: Danger or help right now
+    action: Evacuate or send immediate rescue
+    rank: 3
+
+sectors:
+  economy:
+    label: Economy
+    description: Shops, markets, and local work
+  health:
+    label: Health
+    description: Hospitals, clinics, and first aid
+  infrastructure:
+    label: Infrastructure
+    description: Roads, bridges, water, and power
+  education:
+    label: Education
+    description: Schools and safe learning places
+  logistics:
+    label: Logistics
+    description: Food, clean water, and aid trucks
+  housing:
+    label: Housing
+    description: Homes, apartments, and shelters
+
+propertyTypes:
+  housing:
+    label: Housing
+  commercial:
+    label: Commercial
+
+damageLevels:
+  none:
+    label: No Damage
+    trafficLight: green
+    isHabitable: true
+    needsEvacuation: false
+    guidance: Safe to stay inside
+  minor:
+    label: Minor Damage
+    trafficLight: green
+    isHabitable: true
+    needsEvacuation: false
+    guidance: Safe with small repairs
+  moderate:
+    label: Moderate Damage
+    trafficLight: yellow
+    isHabitable: false
+    needsEvacuation: false
+    guidance: Wait for engineer check before returning
+  severe:
+    label: Severe Damage
+    trafficLight: red
+    isHabitable: false
+    needsEvacuation: true
+    guidance: Leave building now and stay clear
+  collapse:
+    label: Structural Collapse
+    trafficLight: red
+    isHabitable: false
+    needsEvacuation: true
+    guidance: Emergency danger zone - keep out
+
+insuranceStatuses:
+  insured:
+    label: Insured
+    claimRoute: Direct Insurance Claim
+    responsibleAgency: Private Insurer
+    priorityTier: standard
+    nextStep: Send UDGR inspection certificate to your insurance company
+  mortgage:
+    label: Mortgage
+    claimRoute: Bank Mortgage Disaster Policy
+    responsibleAgency: Lender Bank
+    priorityTier: assisted
+    nextStep: Notify your mortgage bank to activate mandatory quake coverage
+  leasing:
+    label: Leasing
+    claimRoute: Leasing Asset Protection
+    responsibleAgency: Leasing Company
+    priorityTier: assisted
+    nextStep: Contact leasing provider to file damage notice and review payment pause
+  uninsured:
+    label: Uninsured
+    claimRoute: Municipal Relief Subsidy
+    responsibleAgency: UDGR Cali Relief Fund
+    priorityTier: publicAid
+    nextStep: Register with UDGR for public shelter and repair grants
+
+ageBrackets:
+  underTen:
+    label: Child Under 10
+    ruleTag: "<10"
+    minAge: 0
+    maxAge: 9
+    score: 3
+  youth:
+    label: Youth Over 10
+    ruleTag: ">10"
+    minAge: 10
+    maxAge: 17
+    score: 1
+  adult:
+    label: Adult 18 to 59
+    ruleTag: ">=18"
+    minAge: 18
+    maxAge: 59
+    score: 0
+  senior:
+    label: Senior 60 and Over
+    ruleTag: ">=60"
+    minAge: 60
+    maxAge: 120
+    score: 3
+
+vulnerabilityFlags:
+  hasDisability:
+    label: Has Disability
+    score: 3
+  isVulnerable:
+    label: Is Vulnerable
+    score: 2
+  hasSpecialNeeds:
+    label: Has Special Needs
+    score: 3
+
+populationGroups:
+  civilian:
+    label: Civilian
+    protocol: Municipal Shelter and Medical Care
+    authority: UDGR and Local Health Network
+    score: 0
+  military:
+    label: Military
+    protocol: Joint Defense Medical and Base Relief
+    authority: Military Joint Command
+    score: 0
+  prison:
+    label: Prison
+    protocol: Secure Evacuation and Guarded Care
+    authority: Penitentiary Authority
+    score: 1
+
+triageThresholds:
+  red:
+    minScore: 3
+  yellow:
+    minScore: 1
+  green:
+    minScore: 0
+
+limits:
+  minAge: 0
+  maxAge: 120
