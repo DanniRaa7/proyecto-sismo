@@ -113,7 +113,9 @@ function bindListener(documentRef, elementId, eventName, handler) {
 function reportBootError(error) {
   const banner = document.getElementById(APP_ELEMENT_IDS.statusBanner);
   const hasBanner = Boolean(banner);
-  if (hasBanner) banner.textContent = error.message;
+  if (!hasBanner) return;
+  banner.className = 'status-banner status-error';
+  banner.textContent = error.message;
 }
 
 export class QuakeReliefApp {
@@ -137,17 +139,24 @@ export class QuakeReliefApp {
     bindListener(this.documentRef, APP_ELEMENT_IDS.propertyForm, 'submit', (event) => this.handlePropertySubmit(event));
     bindListener(this.documentRef, APP_ELEMENT_IDS.triageForm, 'submit', (event) => this.handleTriageSubmit(event));
     this.view.setActiveTab('public');
-    this.refreshBoard('Board is ready. Switch tabs to view Public BI or log Private field inspections.');
+    this.refreshBoard('Board is ready. Load the practice drill or switch to Private Inspector Tool.');
+  }
+
+  getSearchQuery() {
+    const input = this.documentRef.getElementById(APP_ELEMENT_IDS.claimSearchInput);
+    return input ? input.value : '';
   }
 
   refreshBoard(message, isError = false) {
-    this.view.renderSnapshot(this.analytics.getDashboardSnapshot());
+    const query = this.getSearchQuery();
+    this.view.renderSnapshot(this.analytics.getDashboardSnapshot(), query);
+    this.view.renderSearchResults(this.analytics.findPropertiesByQuery(query), query);
     this.view.renderFeedback(message, isError);
   }
 
   handleClaimSearch() {
-    const query = this.documentRef.getElementById(APP_ELEMENT_IDS.claimSearchInput).value;
-    this.view.renderSearchResults(this.analytics.findPropertiesByQuery(query));
+    const query = this.getSearchQuery();
+    this.view.renderSearchResults(this.analytics.findPropertiesByQuery(query), query);
   }
 
   runFormAction(event, formId, action, successMessage) {
@@ -166,7 +175,7 @@ export class QuakeReliefApp {
       const record = readPropertyForm(this.documentRef);
       this.analytics.addPropertyInspection(new PropertyInspection(record, this.rules));
     };
-    this.runFormAction(event, APP_ELEMENT_IDS.propertyForm, addInspection, 'Dual-verdict inspection saved and insurance claim reconciled.');
+    this.runFormAction(event, APP_ELEMENT_IDS.propertyForm, addInspection, 'Building inspection saved and insurance claim updated.');
   }
 
   handleTriageSubmit(event) {
@@ -187,6 +196,8 @@ export class QuakeReliefApp {
 
   handleClearBoard() {
     this.analytics.clearAll();
+    const searchInput = this.documentRef.getElementById(APP_ELEMENT_IDS.claimSearchInput);
+    if (searchInput) searchInput.value = '';
     this.refreshBoard('Board cleared. All 6 Cali sectors are back to Green.');
   }
 }

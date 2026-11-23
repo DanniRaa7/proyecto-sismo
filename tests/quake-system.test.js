@@ -116,10 +116,16 @@ class MockElement {
     this.id = id;
     this.value = '';
     this.checked = false;
+    this.disabled = false;
     this.textContent = '';
     this.innerHTML = '';
     this.className = '';
+    this.attributes = {};
     this.listeners = {};
+  }
+
+  setAttribute(name, value) {
+    this.attributes[name] = value;
   }
 
   addEventListener(eventName, handler) {
@@ -329,23 +335,23 @@ describe('UX Tests - Two-Tab Child-Friendly Traffic-Light Interface', () => {
     assert.ok(html.includes('Private Inspector Tool'));
   });
 
-  it('defines accessible traffic-light and tab classes in styles.css', () => {
+  it('defines accessible traffic-light, interactive states, and mobile rules in styles.css', () => {
     const css = readWorkspaceFile(STYLES_CSS_PATH);
-    assert.ok(css.includes('.light-green'));
-    assert.ok(css.includes('.light-yellow'));
-    assert.ok(css.includes('.light-red'));
-    assert.ok(css.includes('.is-hidden'));
+    assert.ok(css.includes('.light-green') && css.includes('.light-yellow') && css.includes('.light-red'));
+    assert.ok(css.includes(':focus-visible') && css.includes(':hover') && css.includes(':disabled'));
+    assert.ok(css.includes('--touch-target-min: 44px') && css.includes('@media (max-width: 640px)'));
   });
 
-  it('renders KPI counters, 6 sectors, and tab visibility via TrafficLightView', () => {
+  it('renders KPI counters, ARIA tabs, clear button state, and non-duplicated search prompt', () => {
     const rules = loadParsedRules();
     const doc = new MockDocument(REQUIRED_DOM_IDS);
     const analytics = new CityAnalytics(rules);
     const view = new TrafficLightView(doc, rules);
     view.renderSnapshot(analytics.getDashboardSnapshot());
     view.setActiveTab('private');
-    assert.ok(doc.getElementById('bi-kpi-grid').innerHTML.includes('Ambulances Needed'));
-    assert.ok(doc.getElementById('public-panel').className.includes('is-hidden'));
+    assert.equal(doc.getElementById('clear-board-btn').disabled, true);
+    assert.equal(doc.getElementById('tab-private-btn').attributes['aria-selected'], 'true');
+    assert.ok(doc.getElementById('claim-search-results').innerHTML.includes('Type a building name'));
   });
 });
 

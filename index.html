@@ -8,124 +8,160 @@
 </head>
 <body>
   <header class="hero">
-    <div class="hero-copy">
-      <h1>Cali Quake Relief System</h1>
-      <p>A simple traffic-light platform connecting Cali citizens (Public BI) with Engineers, UDGR officers, and Insurers (Private Field Tool).</p>
-    </div>
-    <div class="hero-actions">
-      <button id="load-drill-btn" type="button" class="btn btn-primary">Load Practice Drill</button>
-      <button id="clear-board-btn" type="button" class="btn btn-secondary">Clear Board</button>
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <h1>Cali Quake Relief System</h1>
+        <p>A simple traffic-light board to check building safety, insurance claims, and urgent help for people in Cali.</p>
+      </div>
+      <div class="hero-actions">
+        <button id="load-drill-btn" type="button" class="btn btn-primary">Load Practice Drill</button>
+        <button id="clear-board-btn" type="button" class="btn btn-secondary">Clear Board</button>
+      </div>
     </div>
   </header>
 
-  <nav class="tab-bar" aria-label="Workspace view switch">
-    <button id="tab-public-btn" type="button" class="tab-btn tab-active">Public BI Dashboard (Citizens &amp; Stats)</button>
-    <button id="tab-private-btn" type="button" class="tab-btn">Private Inspector Tool (Engineers &amp; UDGR)</button>
+  <nav class="tab-bar" role="tablist" aria-label="Workspace view switch">
+    <div class="tab-bar-inner">
+      <button id="tab-public-btn" type="button" role="tab" aria-selected="true" aria-controls="public-panel" class="tab-btn tab-active">Public BI Dashboard</button>
+      <button id="tab-private-btn" type="button" role="tab" aria-selected="false" aria-controls="private-panel" class="tab-btn">Private Inspector Tool</button>
+    </div>
   </nav>
 
   <main class="container">
-    <section id="traffic-legend" class="legend-bar" aria-label="Traffic light guide">
-      <span class="legend-item"><span class="light-dot light-green"></span><strong>Green:</strong> Safe for use or standard aid</span>
-      <span class="legend-item"><span class="light-dot light-yellow"></span><strong>Yellow:</strong> At risk or needs priority check</span>
-      <span class="legend-item"><span class="light-dot light-red"></span><strong>Red:</strong> Uninhabitable or urgent rescue now!</span>
-    </section>
-
-    <section class="city-status-panel" aria-live="polite">
-      <div>
-        <h2>Overall Cali City Light</h2>
-        <p id="city-light-text">Checking city sectors...</p>
+    <section class="city-overview" aria-live="polite">
+      <div class="city-status-panel">
+        <div>
+          <h2>Overall Cali City Light</h2>
+          <p id="city-light-text">Checking city sectors...</p>
+        </div>
+        <div id="city-light-badge" class="city-badge light-green">Green - Safe</div>
       </div>
-      <div id="city-light-badge" class="city-badge light-green">Green - Safe</div>
+
+      <div id="traffic-legend" class="legend-bar" aria-label="Traffic light guide">
+        <span class="legend-item"><span class="light-dot light-green"></span><strong>Green:</strong> Safe or standard help</span>
+        <span class="legend-item"><span class="light-dot light-yellow"></span><strong>Yellow:</strong> At risk or check soon</span>
+        <span class="legend-item"><span class="light-dot light-red"></span><strong>Red:</strong> Uninhabitable or help now!</span>
+      </div>
     </section>
 
     <p id="status-banner" class="status-banner status-ok" role="status">Loading Cali city rules...</p>
 
-    <div id="public-panel" class="tab-panel">
+    <div id="public-panel" role="tabpanel" aria-labelledby="tab-public-btn" class="tab-panel">
       <section class="panel">
-        <h2>Public Business Intelligence (Key City Counters)</h2>
+        <h2>City Safety Summary (Public BI)</h2>
         <div id="bi-kpi-grid" class="kpi-grid"></div>
       </section>
 
       <section class="panel">
-        <h2>6 Affected Cali City Sectors</h2>
+        <h2>6 Cali City Areas</h2>
         <div id="sector-grid" class="sector-grid"></div>
       </section>
 
       <section class="panel">
-        <h2>Citizen Claim &amp; Habitability Lookup</h2>
-        <p class="panel-hint">Owners and tenants can search by building name or sector to check UDGR safety and insurance claim status.</p>
-        <label class="search-label" for="claim-search-input">Search Property or Sector</label>
-        <input id="claim-search-input" class="search-input" type="text" placeholder="Example: La Luna Hotel, School Block 6, or housing">
+        <h2>Check Your Building &amp; Insurance</h2>
+        <p class="panel-hint">Owners and tenants can search by building name or city area to check UDGR safety and next insurance step.</p>
+        <label class="search-label" for="claim-search-input">Search Property or Area</label>
+        <input id="claim-search-input" class="search-input" type="text" placeholder="Type: La Luna Hotel, School Block 6, or housing">
         <div id="claim-search-results" class="record-list"></div>
       </section>
     </div>
 
-    <div id="private-panel" class="tab-panel is-hidden">
+    <div id="private-panel" role="tabpanel" aria-labelledby="tab-private-btn" class="tab-panel is-hidden">
       <section class="forms-grid">
         <article class="panel">
-          <h2>1. Field Inspection &amp; Insurance Reconciliation</h2>
-          <p class="panel-hint">Combine Engineer technical damage with the official UDGR habitability verdict to resolve insurance claims.</p>
+          <h2>1. Field Inspection &amp; Insurance Claim</h2>
+          <p class="panel-hint">Combine the Engineer damage grade with the UDGR safety light to approve insurance or public aid.</p>
           <form id="property-form" class="relief-form">
-            <label for="property-name">Building Name or Address</label>
-            <input id="property-name" type="text" placeholder="Example: La Luna Hotel or 44th &amp; 9th Ave" required>
+            <fieldset class="form-section">
+              <legend>Property &amp; Occupant</legend>
+              <div class="field-group">
+                <label for="property-name">Building Name or Address *</label>
+                <input id="property-name" type="text" placeholder="Example: La Luna Hotel or 44th &amp; 9th Ave" required>
+              </div>
+              <div class="field-row">
+                <div class="field-group">
+                  <label for="property-sector">City Sector</label>
+                  <select id="property-sector">
+                    <option value="economy">Economy</option>
+                    <option value="health">Health</option>
+                    <option value="infrastructure">Infrastructure</option>
+                    <option value="education">Education</option>
+                    <option value="logistics">Logistics</option>
+                    <option value="housing">Housing</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="property-type">Property Type</label>
+                  <select id="property-type">
+                    <option value="residential">Residential (Home)</option>
+                    <option value="commercial">Commercial (Store / Hotel)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-group">
+                  <label for="property-occupant">Occupant Role</label>
+                  <select id="property-occupant">
+                    <option value="owner">Owner</option>
+                    <option value="tenant">Tenant</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="property-insurance">Insurance Status</label>
+                  <select id="property-insurance">
+                    <option value="insured">Insured (Policy)</option>
+                    <option value="mortgage">Mortgage (Bank Policy)</option>
+                    <option value="leasing">Leasing (Bank Owner)</option>
+                    <option value="uninsured">Uninsured (High Risk)</option>
+                  </select>
+                </div>
+              </div>
+            </fieldset>
 
-            <label for="property-sector">City Sector</label>
-            <select id="property-sector">
-              <option value="economy">Economy</option>
-              <option value="health">Health</option>
-              <option value="infrastructure">Infrastructure</option>
-              <option value="education">Education</option>
-              <option value="logistics">Logistics</option>
-              <option value="housing">Housing</option>
-            </select>
+            <fieldset class="form-section">
+              <legend>Engineer &amp; UDGR Verdicts</legend>
+              <div class="field-row">
+                <div class="field-group">
+                  <label for="property-inspector">Field Inspector</label>
+                  <select id="property-inspector">
+                    <option value="civilEngineer">Civil Engineer</option>
+                    <option value="architect">Architect</option>
+                    <option value="topographer">Topographer</option>
+                    <option value="udgrOfficer">UDGR Officer</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="property-damage">Engineer Damage Level</label>
+                  <select id="property-damage">
+                    <option value="superficial">Superficial Damage</option>
+                    <option value="chronic">Chronic Damage</option>
+                    <option value="structural">Structural Damage</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="property-habitability">UDGR Habitability Light</label>
+                <select id="property-habitability">
+                  <option value="safe">Green - Safe for Use</option>
+                  <option value="atRisk">Yellow - At Risk</option>
+                  <option value="uninhabitable">Red - Uninhabitable (Evacuate)</option>
+                </select>
+              </div>
+            </fieldset>
 
-            <label for="property-type">Property Type</label>
-            <select id="property-type">
-              <option value="residential">Residential (Home / Apartment)</option>
-              <option value="commercial">Commercial (Store / Hotel / School)</option>
-            </select>
-
-            <label for="property-occupant">Occupant Role</label>
-            <select id="property-occupant">
-              <option value="owner">Owner</option>
-              <option value="tenant">Tenant</option>
-            </select>
-
-            <label for="property-insurance">Financial &amp; Insurance Status</label>
-            <select id="property-insurance">
-              <option value="insured">Insured (Common or Own Policy)</option>
-              <option value="mortgage">Mortgage (Bank Beneficiary Policy)</option>
-              <option value="leasing">Leasing (Bank Owner Policy)</option>
-              <option value="uninsured">Uninsured (High Financial Risk - UDGR Aid)</option>
-            </select>
-
-            <label for="property-inspector">Field Inspector Role</label>
-            <select id="property-inspector">
-              <option value="civilEngineer">Civil Engineer</option>
-              <option value="architect">Architect</option>
-              <option value="topographer">Topographer</option>
-              <option value="udgrOfficer">UDGR Officer</option>
-            </select>
-
-            <label for="property-damage">Technical Damage Level (Engineer)</label>
-            <select id="property-damage">
-              <option value="superficial">Superficial Damage</option>
-              <option value="chronic">Chronic Damage</option>
-              <option value="structural">Structural Damage</option>
-            </select>
-
-            <label for="property-habitability">UDGR Habitability Verdict</label>
-            <select id="property-habitability">
-              <option value="safe">Green - Safe for Use</option>
-              <option value="atRisk">Yellow - At Risk</option>
-              <option value="uninhabitable">Red - Uninhabitable (Evacuate)</option>
-            </select>
-
-            <label for="property-photo">Photo Evidence Filename / Reference</label>
-            <input id="property-photo" type="text" placeholder="Example: wall-crack-01.jpg">
-
-            <label for="property-inventory">Damage Inventory Summary</label>
-            <input id="property-inventory" type="text" placeholder="Example: Front beam and kitchen wall cracked">
+            <fieldset class="form-section">
+              <legend>Field Evidence (Optional)</legend>
+              <div class="field-row">
+                <div class="field-group">
+                  <label for="property-photo">Photo Reference <span class="optional-tag">(Optional)</span></label>
+                  <input id="property-photo" type="text" placeholder="wall-crack-01.jpg">
+                </div>
+                <div class="field-group">
+                  <label for="property-inventory">Damage Inventory <span class="optional-tag">(Optional)</span></label>
+                  <input id="property-inventory" type="text" placeholder="Front beam and wall">
+                </div>
+              </div>
+            </fieldset>
 
             <button type="submit" class="btn btn-primary">Save Inspection &amp; Reconcile Claim</button>
           </form>
@@ -133,33 +169,43 @@
 
         <article class="panel">
           <h2>2. Citizen Triage &amp; Ambulance Dispatch</h2>
-          <p class="panel-hint">Classify by age (&lt;10, &gt;10, &gt;=18, &gt;=60), population group, and ambulance or accessibility needs.</p>
+          <p class="panel-hint">Rank rescue priority by age (&lt;10, &gt;10, &gt;=18, &gt;=60), population group, and ambulance or care needs.</p>
           <form id="triage-form" class="relief-form">
-            <label for="person-name">Citizen Full Name</label>
-            <input id="person-name" type="text" placeholder="Example: Grace Miller" required>
-
-            <label for="person-sector">City Sector</label>
-            <select id="person-sector">
-              <option value="health">Health</option>
-              <option value="housing">Housing</option>
-              <option value="education">Education</option>
-              <option value="economy">Economy</option>
-              <option value="infrastructure">Infrastructure</option>
-              <option value="logistics">Logistics</option>
-            </select>
-
-            <label for="person-age">Age (Years: &lt;10, &gt;10, &gt;=18, &gt;=60)</label>
-            <input id="person-age" type="number" min="0" max="120" value="30" required>
-
-            <label for="person-group">Population Group</label>
-            <select id="person-group">
-              <option value="civilian">Civilian</option>
-              <option value="military">Military</option>
-              <option value="prison">Prison</option>
-            </select>
+            <fieldset class="form-section">
+              <legend>Citizen Details</legend>
+              <div class="field-group">
+                <label for="person-name">Citizen Full Name *</label>
+                <input id="person-name" type="text" placeholder="Example: Grace Miller" required>
+              </div>
+              <div class="field-row">
+                <div class="field-group">
+                  <label for="person-sector">City Sector</label>
+                  <select id="person-sector">
+                    <option value="health">Health</option>
+                    <option value="housing">Housing</option>
+                    <option value="education">Education</option>
+                    <option value="economy">Economy</option>
+                    <option value="infrastructure">Infrastructure</option>
+                    <option value="logistics">Logistics</option>
+                  </select>
+                </div>
+                <div class="field-group">
+                  <label for="person-age">Age (0-120) *</label>
+                  <input id="person-age" type="number" min="0" max="120" value="30" required>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="person-group">Population Group</label>
+                <select id="person-group">
+                  <option value="civilian">Civilian</option>
+                  <option value="military">Military</option>
+                  <option value="prison">Prison</option>
+                </select>
+              </div>
+            </fieldset>
 
             <fieldset class="checkbox-group">
-              <legend>Priority Conditions</legend>
+              <legend>Priority Care Conditions</legend>
               <label class="check-label" for="flag-disability">
                 <input id="flag-disability" type="checkbox"> Disability (Wheelchair / Blind)
               </label>
@@ -179,14 +225,14 @@
 
     <section class="lists-grid">
       <article class="panel">
-        <h2>Official Inspection &amp; Insurance Log</h2>
-        <p id="property-summary" class="summary-line">Total: 0</p>
+        <h2>Official Building Checks &amp; Insurance Guide</h2>
+        <div id="property-summary" class="summary-line"></div>
         <div id="property-list" class="record-list"></div>
       </article>
 
       <article class="panel">
         <h2>People Priority &amp; Ambulance Queue (Red First)</h2>
-        <p id="population-summary" class="summary-line">Total: 0</p>
+        <div id="population-summary" class="summary-line"></div>
         <div id="priority-list" class="record-list"></div>
       </article>
     </section>
