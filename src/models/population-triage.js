@@ -1,18 +1,22 @@
 import {
+  assertIntegerInRange,
   assertLookupKey,
   assertNonEmptyText,
-  assertNumberInRange,
+  assertRecordObject,
+  createUniqueId,
   getSortedLightKeys,
 } from '../utils/validators.js';
 
 const DEFAULT_PERSON_PREFIX = 'person';
 const URGENT_TRAFFIC_LIGHT = 'red';
+const MAX_NAME_LENGTH = 120;
 
 function validateTriageRecord(record, rules) {
-  assertNonEmptyText(record.fullName, 'fullName');
+  assertRecordObject(record, 'triage');
+  assertNonEmptyText(record.fullName, 'fullName', MAX_NAME_LENGTH);
   assertLookupKey(rules.sectors, record.sector, 'sector');
   assertLookupKey(rules.populationGroups, record.group, 'group');
-  assertNumberInRange(record.age, rules.limits.minAge, rules.limits.maxAge, 'age');
+  assertIntegerInRange(record.age, rules.limits.minAge, rules.limits.maxAge, 'age');
 }
 
 function extractCareFlags(record, flagKeys) {
@@ -24,7 +28,7 @@ function extractCareFlags(record, flagKeys) {
 export class PopulationTriage {
   constructor(record, rules) {
     validateTriageRecord(record, rules);
-    this.id = record.id || `${DEFAULT_PERSON_PREFIX}-${Date.now()}`;
+    this.id = record.id || createUniqueId(DEFAULT_PERSON_PREFIX);
     this.fullName = record.fullName.trim();
     this.sector = record.sector;
     this.age = record.age;

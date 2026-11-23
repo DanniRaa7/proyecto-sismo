@@ -61,7 +61,7 @@
         <h2>Check Your Building &amp; Insurance</h2>
         <p class="panel-hint">Owners and tenants can search by building name or city area to check UDGR safety and next insurance step.</p>
         <label class="search-label" for="claim-search-input">Search Property or Area</label>
-        <input id="claim-search-input" class="search-input" type="text" placeholder="Type: La Luna Hotel, School Block 6, or housing">
+        <input id="claim-search-input" class="search-input" type="text" maxlength="120" placeholder="Type: La Luna Hotel, School Block 6, or housing">
         <div id="claim-search-results" class="record-list"></div>
       </section>
     </div>
@@ -76,7 +76,7 @@
               <legend>Property &amp; Occupant</legend>
               <div class="field-group">
                 <label for="property-name">Building Name or Address *</label>
-                <input id="property-name" type="text" placeholder="Example: La Luna Hotel or 44th &amp; 9th Ave" required>
+                <input id="property-name" type="text" maxlength="120" placeholder="Example: La Luna Hotel or 44th &amp; 9th Ave" required>
               </div>
               <div class="field-row">
                 <div class="field-group">
@@ -154,11 +154,11 @@
               <div class="field-row">
                 <div class="field-group">
                   <label for="property-photo">Photo Reference <span class="optional-tag">(Optional)</span></label>
-                  <input id="property-photo" type="text" placeholder="wall-crack-01.jpg">
+                  <input id="property-photo" type="text" maxlength="120" placeholder="wall-crack-01.jpg">
                 </div>
                 <div class="field-group">
                   <label for="property-inventory">Damage Inventory <span class="optional-tag">(Optional)</span></label>
-                  <input id="property-inventory" type="text" placeholder="Front beam and wall">
+                  <input id="property-inventory" type="text" maxlength="240" placeholder="Front beam and wall">
                 </div>
               </div>
             </fieldset>
@@ -175,7 +175,7 @@
               <legend>Citizen Details</legend>
               <div class="field-group">
                 <label for="person-name">Citizen Full Name *</label>
-                <input id="person-name" type="text" placeholder="Example: Grace Miller" required>
+                <input id="person-name" type="text" maxlength="120" placeholder="Example: Grace Miller" required>
               </div>
               <div class="field-row">
                 <div class="field-group">

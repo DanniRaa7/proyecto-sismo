@@ -1,6 +1,6 @@
 import { PropertyInspection } from '../models/property-inspection.js';
 import { PopulationTriage } from '../models/population-triage.js';
-import { assertInstance, getSortedLightKeys } from '../utils/validators.js';
+import { assertInstance, assertLookupKey, getSortedLightKeys } from '../utils/validators.js';
 
 const DEFAULT_SAFE_LIGHT = 'green';
 
@@ -43,6 +43,22 @@ function countCareFlags(summaries, flagKeys) {
   );
 }
 
+function buildPropertyKey(item) {
+  return `${item.propertyName.toLowerCase()}|${item.sector}|${item.propertyType}`;
+}
+
+function buildTriageKey(item) {
+  return `${item.fullName.toLowerCase()}|${item.sector}|${item.age}|${item.group}`;
+}
+
+function assertNotDuplicate(items, candidate, getKey, label) {
+  const candidateKey = getKey(candidate);
+  const isDuplicate = items.some((existing) => getKey(existing) === candidateKey);
+  if (isDuplicate) {
+    throw new Error(`Duplicate ${label} already recorded`);
+  }
+}
+
 function countPropertyDimensions(items, rules, orderedLights) {
   return {
     trafficLight: countByField(items, orderedLights, (item) => item.trafficLight),
@@ -73,12 +89,14 @@ export class CityAnalytics {
 
   addPropertyInspection(inspection) {
     assertInstance(inspection, PropertyInspection, 'PropertyInspection');
+    assertNotDuplicate(this.inspections, inspection, buildPropertyKey, 'property inspection');
     this.inspections.push(inspection);
     return inspection.toSummary();
   }
 
   addPopulationTriage(triage) {
     assertInstance(triage, PopulationTriage, 'PopulationTriage');
+    assertNotDuplicate(this.triages, triage, buildTriageKey, 'citizen triage');
     this.triages.push(triage);
     return triage.toSummary();
   }
@@ -96,6 +114,7 @@ export class CityAnalytics {
   }
 
   getSectorStatus(sectorKey) {
+    assertLookupKey(this.rules.sectors, sectorKey, 'sector');
     const sectorRule = this.rules.sectors[sectorKey];
     const lights = this.getSectorLights(sectorKey);
     return {
@@ -119,6 +138,7 @@ export class CityAnalytics {
     const items = this.inspections.map((item) => item.toSummary());
     return {
       total: items.length,
+      pendingInspectionCount: items.filter((item) => !item.isInspectionComplete).length,
       evacuationCount: items.filter((item) => item.needsEvacuation).length,
       uninsuredHighRiskCount: items.filter((item) => item.insurancePlan.isHighFinancialRisk).length,
       withEvidenceCount: items.filter((item) => item.hasPhotoEvidence).length,

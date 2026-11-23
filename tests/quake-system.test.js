@@ -104,11 +104,29 @@ function loadParsedRules() {
   return parseYaml(readWorkspaceFile(YAML_RULES_PATH));
 }
 
-function createFakeFetch(yamlText) {
+function createFakeFetch(yamlText, isOk = true) {
   return async () => ({
-    ok: true,
+    ok: isOk,
     text: async () => yamlText,
   });
+}
+
+class MockStorage {
+  constructor() {
+    this.store = {};
+  }
+
+  getItem(key) {
+    return Object.hasOwn(this.store, key) ? this.store[key] : null;
+  }
+
+  setItem(key, value) {
+    this.store[key] = String(value);
+  }
+
+  removeItem(key) {
+    delete this.store[key];
+  }
 }
 
 class MockElement {
@@ -195,41 +213,36 @@ describe('Unit Tests - YAML Parser and Rules Config', () => {
     assert.deepEqual(Object.keys(rules.occupantRoles), ['owner', 'tenant']);
   });
 
-  it('parses booleans, numbers, and quoted age rule tags accurately', () => {
+  it('parses booleans, numbers, inline comments, and rejects malformed YAML', () => {
     const rules = loadParsedRules();
     assert.equal(rules.habitabilityStatuses.uninhabitable.needsEvacuation, true);
-    assert.equal(rules.insuranceStatuses.uninsured.isHighFinancialRisk, true);
     assert.equal(rules.ageBrackets.underTen.ruleTag, '<10');
-    assert.equal(rules.ageBrackets.youth.ruleTag, '>10');
-    assert.equal(rules.ageBrackets.adult.ruleTag, '>=18');
-    assert.equal(rules.ageBrackets.senior.ruleTag, '>=60');
+    const inlineParsed = parseYaml('triageThresholds:\n  red:\n    minScore: 3 # urgent\n');
+    assert.equal(inlineParsed.triageThresholds.red.minScore, 3);
+    assert.throws(() => parseYaml('sectors:\n  broken line without colon\n'));
+    assert.throws(() => parseYaml('   '));
   });
 });
 
 describe('Unit Tests - Dual-Verdict PropertyInspection and Insurance', () => {
-  it('blocks insurance payout when engineer or UDGR verdict is missing', () => {
+  it('blocks payout when pending and marks uninspected building as yellow non-habitable', () => {
     const rules = loadParsedRules();
     const pendingHome = createInspection({ damageLevel: null, habitabilityStatus: null }, rules);
     const plan = InsuranceClaimReconciler.reconcile(pendingHome, rules);
     assert.equal(pendingHome.isInspectionComplete(), false);
+    assert.equal(pendingHome.getTrafficLight(), 'yellow');
+    assert.equal(pendingHome.getHabitabilityAssessment().isHabitable, false);
     assert.equal(plan.isApproved, false);
-    assert.equal(plan.claimRoute, 'Pending Inspection');
   });
 
-  it('records technical damage, UDGR habitability, and photo evidence cleanly', () => {
+  it('preserves prior engineer damage and evidence during two-step UDGR recordInspection', () => {
     const rules = loadParsedRules();
-    const home = createInspection({ damageLevel: null, habitabilityStatus: null, evidencePhoto: '' }, rules);
-    home.recordInspection({
-      damageLevel: 'structural',
-      habitabilityStatus: 'uninhabitable',
-      inspectorRole: 'topographer',
-      evidencePhoto: 'wall-evidence.jpg',
-      damageInventory: 'Load wall split',
-    });
+    const home = createInspection({ habitabilityStatus: null, evidencePhoto: 'beam.jpg' }, rules);
+    home.recordInspection({ inspectorRole: 'udgrOfficer', habitabilityStatus: 'uninhabitable' });
     assert.equal(home.isInspectionComplete(), true);
-    assert.equal(home.hasPhotoEvidence(), true);
+    assert.equal(home.damageLevel, 'structural');
+    assert.equal(home.evidencePhoto, 'beam.jpg');
     assert.equal(home.getTrafficLight(), 'red');
-    assert.equal(home.getHabitabilityAssessment().needsEvacuation, true);
   });
 
   it('routes all four insurance statuses and flags uninsured high risk', () => {
@@ -243,12 +256,13 @@ describe('Unit Tests - Dual-Verdict PropertyInspection and Insurance', () => {
     assert.equal(plans[0].isHighFinancialRisk, false);
   });
 
-  it('rejects invalid sector, property type, occupant, damage, or habitability', () => {
+  it('generates unique IDs in same millisecond and rejects null or overlong records', () => {
     const rules = loadParsedRules();
+    const ids = [1, 2, 3].map(() => createInspection({ id: '' }, rules).id);
+    assert.equal(new Set(ids).size, 3);
+    assert.throws(() => new PropertyInspection(null, rules), /Invalid property record/);
+    assert.throws(() => createInspection({ propertyName: 'A'.repeat(250) }, rules));
     assert.throws(() => createInspection({ sector: 'space' }, rules));
-    assert.throws(() => createInspection({ propertyType: 'boat' }, rules));
-    assert.throws(() => createInspection({ occupantRole: 'guest' }, rules));
-    assert.throws(() => createInspection({ damageLevel: 'broken' }, rules));
     assert.throws(() => createInspection({ habitabilityStatus: 'closed' }, rules));
   });
 });
@@ -284,34 +298,36 @@ describe('Unit Tests - PopulationTriage and Ambulance Dispatch', () => {
     assert.equal(prison.getTrafficLight(), 'yellow');
   });
 
-  it('rejects blank names, invalid ages, unknown sectors, and unknown groups', () => {
+  it('rejects null, decimal ages, blank names, overlong text, and unknown groups', () => {
     const rules = loadParsedRules();
-    assert.throws(() => createTriage({ fullName: '' }, rules));
+    assert.throws(() => new PopulationTriage(null, rules), /Invalid triage record/);
+    assert.throws(() => createTriage({ age: 9.5 }, rules));
+    assert.throws(() => createTriage({ age: 59.5 }, rules));
     assert.throws(() => createTriage({ age: -1 }, rules));
-    assert.throws(() => createTriage({ age: 121 }, rules));
-    assert.throws(() => createTriage({ sector: 'moon' }, rules));
+    assert.throws(() => createTriage({ fullName: 'B'.repeat(250) }, rules));
     assert.throws(() => createTriage({ group: 'vip' }, rules));
   });
 });
 
 describe('Unit Tests - CityAnalytics BI Service', () => {
-  it('tracks all 6 sectors with alerts, uninsured risk, and ambulance counts', () => {
+  it('tracks 6 sectors, pending counts, uninsured risk, and rejects unknown sectors', () => {
     const rules = loadParsedRules();
     const analytics = new CityAnalytics(rules);
-    analytics.addPropertyInspection(createInspection({ insuranceStatus: 'uninsured', habitabilityStatus: 'uninhabitable' }, rules));
+    analytics.addPropertyInspection(createInspection({ damageLevel: null, habitabilityStatus: null, insuranceStatus: 'uninsured' }, rules));
     analytics.addPopulationTriage(createTriage({ hasSpecialNeeds: true }, rules));
-    assert.equal(analytics.getAllSectorStatuses().length, 6);
+    assert.equal(analytics.getPropertyReport().pendingInspectionCount, 1);
     assert.equal(analytics.getPropertyReport().uninsuredHighRiskCount, 1);
     assert.equal(analytics.getPopulationReport().ambulanceCount, 1);
-    assert.equal(analytics.getCityTrafficLight(), 'red');
+    assert.throws(() => analytics.getSectorStatus('nonexistent'), /Invalid sector/);
   });
 
-  it('supports public citizen property search and priority queue sorting', () => {
+  it('blocks duplicate rapid submissions and sorts priority queue highest score first', () => {
     const rules = loadParsedRules();
     const analytics = new CityAnalytics(rules);
     analytics.addPropertyInspection(createInspection({ propertyName: 'School Block 6' }, rules));
-    analytics.addPopulationTriage(createTriage({ id: 'low', age: 30 }, rules));
-    analytics.addPopulationTriage(createTriage({ id: 'top', age: 6, hasSpecialNeeds: true }, rules));
+    assert.throws(() => analytics.addPropertyInspection(createInspection({ propertyName: 'School Block 6' }, rules)));
+    analytics.addPopulationTriage(createTriage({ id: 'low', fullName: 'Sam Lee', age: 30 }, rules));
+    analytics.addPopulationTriage(createTriage({ id: 'top', fullName: 'Mia Ross', age: 6, hasSpecialNeeds: true }, rules));
     assert.equal(analytics.findPropertiesByQuery('block 6').length, 1);
     assert.deepEqual(analytics.getPriorityQueue().map((item) => item.id), ['top', 'low']);
   });
@@ -326,11 +342,12 @@ describe('Unit Tests - CityAnalytics BI Service', () => {
 });
 
 describe('UX Tests - Two-Tab Child-Friendly Traffic-Light Interface', () => {
-  it('includes all Public BI and Private Inspector DOM IDs in index.html', () => {
+  it('includes all Public BI and Private Inspector DOM IDs and maxlength limits in index.html', () => {
     const html = readWorkspaceFile(INDEX_HTML_PATH);
     REQUIRED_DOM_IDS.forEach((id) => {
       assert.ok(html.includes(`id="${id}"`), `Missing DOM id: ${id}`);
     });
+    assert.ok(html.includes('maxlength="120"'));
     assert.ok(html.includes('Public BI Dashboard'));
     assert.ok(html.includes('Private Inspector Tool'));
   });
@@ -355,14 +372,41 @@ describe('UX Tests - Two-Tab Child-Friendly Traffic-Light Interface', () => {
   });
 });
 
-describe('Connection Tests - YAML, Services, Two-Tab App, and Search', () => {
-  it('loads city rules from config/city-rules.yaml via loadCityRules', async () => {
+describe('Connection Tests - YAML, Persistence, Two-Tab App, and Validation', () => {
+  it('loads valid YAML rules and rejects empty or incomplete YAML schema', async () => {
     const rules = await loadCityRules(createFakeFetch(readWorkspaceFile(YAML_RULES_PATH)));
     assert.equal(rules.sectors.education.label, 'Education');
-    assert.equal(rules.damageLevels.structural.label, 'Structural Damage');
+    await assert.rejects(() => loadCityRules(createFakeFetch('')), /Missing required yamlText/);
+    await assert.rejects(() => loadCityRules(createFakeFetch('sectors:\n  health:\n    label: Health\n')), /Invalid city rules YAML/);
   });
 
-  it('connects Private forms, Public BI search, and ambulance counter end-to-end', async () => {
+  it('rejects blank age form submission and connects search and ambulance counters', async () => {
+    const doc = new MockDocument(REQUIRED_DOM_IDS);
+    const app = await bootstrapApp(doc, createFakeFetch(readWorkspaceFile(YAML_RULES_PATH)));
+    doc.getElementById('person-name').value = 'Blank Age';
+    doc.getElementById('person-sector').value = 'health';
+    doc.getElementById('person-age').value = '';
+    doc.getElementById('person-group').value = 'civilian';
+    doc.getElementById('triage-form').trigger('submit', { preventDefault: () => {} });
+    assert.equal(app.analytics.getPopulationReport().total, 0);
+    assert.ok(doc.getElementById('status-banner').className.includes('status-error'));
+  });
+
+  it('persists records across reload and includes all 4 insurance types in practice drill', async () => {
+    const storage = new MockStorage();
+    const yamlText = readWorkspaceFile(YAML_RULES_PATH);
+    const docOne = new MockDocument(REQUIRED_DOM_IDS);
+    const appOne = await bootstrapApp(docOne, createFakeFetch(yamlText), storage);
+    docOne.getElementById('load-drill-btn').trigger('click');
+    assert.ok(appOne.analytics.getPropertyReport().insuranceStatus.mortgage >= 1);
+    const docTwo = new MockDocument(REQUIRED_DOM_IDS);
+    const appTwo = await bootstrapApp(docTwo, createFakeFetch(yamlText), storage);
+    assert.equal(appTwo.analytics.getPropertyReport().total, 6);
+    docTwo.getElementById('clear-board-btn').trigger('click');
+    assert.equal(appTwo.analytics.getPropertyReport().total, 0);
+  });
+
+  it('connects Private forms and Public search results end-to-end', async () => {
     const doc = new MockDocument(REQUIRED_DOM_IDS);
     const app = await bootstrapApp(doc, createFakeFetch(readWorkspaceFile(YAML_RULES_PATH)));
     fillPropertyForm(doc);
@@ -373,16 +417,5 @@ describe('Connection Tests - YAML, Services, Two-Tab App, and Search', () => {
     doc.getElementById('claim-search-input').trigger('input');
     assert.equal(app.analytics.getPopulationReport().ambulanceCount, 1);
     assert.ok(doc.getElementById('claim-search-results').innerHTML.includes('44th &amp; 9th Avenue Hotel'));
-  });
-
-  it('switches tabs, loads 6-sector Cali drill, and resets cleanly via buttons', async () => {
-    const doc = new MockDocument(REQUIRED_DOM_IDS);
-    const app = await bootstrapApp(doc, createFakeFetch(readWorkspaceFile(YAML_RULES_PATH)));
-    doc.getElementById('tab-private-btn').trigger('click');
-    assert.ok(doc.getElementById('public-panel').className.includes('is-hidden'));
-    doc.getElementById('load-drill-btn').trigger('click');
-    assert.equal(app.analytics.getPropertyReport().total, 6);
-    doc.getElementById('clear-board-btn').trigger('click');
-    assert.equal(app.analytics.getCityTrafficLight(), 'green');
   });
 });

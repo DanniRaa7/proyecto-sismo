@@ -1,10 +1,13 @@
 import { parseYaml } from './utils/yaml-parser.js';
+import { assertRulesSchema } from './utils/validators.js';
+import { saveBoardState, loadBoardState, clearBoardState } from './utils/board-storage.js';
 import { PropertyInspection } from './models/property-inspection.js';
 import { PopulationTriage } from './models/population-triage.js';
 import { CityAnalytics } from './services/city-analytics.js';
 import { TrafficLightView } from './ui/traffic-light-view.js';
 
 const DEFAULT_RULES_PATH = './config/city-rules.yaml';
+const HASH_TO_TAB_MAP = { '#private': 'private', '#public': 'public' };
 
 const APP_ELEMENT_IDS = {
   tabPublicButton: 'tab-public-btn',
@@ -37,7 +40,7 @@ const APP_ELEMENT_IDS = {
 const SAMPLE_PROPERTY_RECORDS = [
   { id: 'drill-property-1', propertyName: 'La Luna Hotel', sector: 'economy', propertyType: 'commercial', occupantRole: 'owner', insuranceStatus: 'insured', inspectorRole: 'civilEngineer', damageLevel: 'structural', habitabilityStatus: 'atRisk', evidencePhoto: 'hotel-column.jpg', damageInventory: 'Lobby columns and glass facade' },
   { id: 'drill-property-2', propertyName: 'Central Hospital Annex', sector: 'health', propertyType: 'commercial', occupantRole: 'owner', insuranceStatus: 'insured', inspectorRole: 'architect', damageLevel: 'superficial', habitabilityStatus: 'safe', evidencePhoto: 'er-wing.jpg', damageInventory: 'Minor wall plaster cracks' },
-  { id: 'drill-property-3', propertyName: 'Perimeter Road Depot', sector: 'infrastructure', propertyType: 'commercial', occupantRole: 'tenant', insuranceStatus: 'leasing', inspectorRole: 'topographer', damageLevel: 'chronic', habitabilityStatus: 'atRisk', evidencePhoto: 'road-slope.jpg', damageInventory: 'Side road curbing shifted' },
+  { id: 'drill-property-3', propertyName: 'Perimeter Road Apartments', sector: 'infrastructure', propertyType: 'residential', occupantRole: 'owner', insuranceStatus: 'mortgage', inspectorRole: 'topographer', damageLevel: 'chronic', habitabilityStatus: 'atRisk', evidencePhoto: 'road-slope.jpg', damageInventory: 'Side road curbing and foundation shifted' },
   { id: 'drill-property-4', propertyName: 'School Block 6', sector: 'education', propertyType: 'commercial', occupantRole: 'owner', insuranceStatus: 'insured', inspectorRole: 'civilEngineer', damageLevel: 'structural', habitabilityStatus: 'uninhabitable', evidencePhoto: 'block6-stairs.jpg', damageInventory: 'Second-floor classrooms closed' },
   { id: 'drill-property-5', propertyName: 'South Supply Warehouse', sector: 'logistics', propertyType: 'commercial', occupantRole: 'tenant', insuranceStatus: 'leasing', inspectorRole: 'udgrOfficer', damageLevel: 'superficial', habitabilityStatus: 'safe', evidencePhoto: 'storage-bay.jpg', damageInventory: 'Cement pallets intact' },
   { id: 'drill-property-6', propertyName: 'Hillside Family Home', sector: 'housing', propertyType: 'residential', occupantRole: 'owner', insuranceStatus: 'uninsured', inspectorRole: 'udgrOfficer', damageLevel: 'structural', habitabilityStatus: 'uninhabitable', evidencePhoto: 'home-roof.jpg', damageInventory: 'Roof truss and bedrooms damaged' },
@@ -58,7 +61,9 @@ export async function loadCityRules(fetchClient, rulesPath = DEFAULT_RULES_PATH)
   if (!isResponseOk) {
     throw new Error(`Unable to load city rules from ${rulesPath}`);
   }
-  return parseYaml(await response.text());
+  const rules = parseYaml(await response.text());
+  assertRulesSchema(rules);
+  return rules;
 }
 
 export function createSampleDrill(rules) {
@@ -66,6 +71,11 @@ export function createSampleDrill(rules) {
     inspections: SAMPLE_PROPERTY_RECORDS.map((item) => new PropertyInspection(item, rules)),
     triages: SAMPLE_TRIAGE_RECORDS.map((item) => new PopulationTriage(item, rules)),
   };
+}
+
+function parseRequiredInteger(rawValue) {
+  const trimmed = String(rawValue ?? '').trim();
+  return trimmed.length > 0 ? Number(trimmed) : Number.NaN;
 }
 
 function readPropertyIdentity(documentRef) {
@@ -96,7 +106,7 @@ function readTriageForm(documentRef) {
   return {
     fullName: documentRef.getElementById(APP_ELEMENT_IDS.personName).value,
     sector: documentRef.getElementById(APP_ELEMENT_IDS.personSector).value,
-    age: Number(documentRef.getElementById(APP_ELEMENT_IDS.personAge).value),
+    age: parseRequiredInteger(documentRef.getElementById(APP_ELEMENT_IDS.personAge).value),
     group: documentRef.getElementById(APP_ELEMENT_IDS.personGroup).value,
     hasDisability: Boolean(documentRef.getElementById(APP_ELEMENT_IDS.flagDisability).checked),
     isVulnerable: Boolean(documentRef.getElementById(APP_ELEMENT_IDS.flagVulnerable).checked),
@@ -118,28 +128,59 @@ function reportBootError(error) {
   banner.textContent = error.message;
 }
 
+function resolveTabFromHash(locationRef) {
+  const hash = locationRef ? locationRef.hash : '';
+  return HASH_TO_TAB_MAP[hash] || 'public';
+}
+
+function syncTabHash(locationRef, tabKey) {
+  const targetHash = `#${tabKey}`;
+  if (locationRef && locationRef.hash !== targetHash) locationRef.hash = targetHash;
+}
+
 export class QuakeReliefApp {
-  constructor(documentRef, analytics, view, rules) {
+  constructor(documentRef, analytics, view, rules, storageRef = null, windowRef = null) {
     this.documentRef = documentRef;
     this.analytics = analytics;
     this.view = view;
     this.rules = rules;
+    this.storageRef = storageRef;
+    this.windowRef = windowRef;
   }
 
   bindNavigationEvents() {
-    bindListener(this.documentRef, APP_ELEMENT_IDS.tabPublicButton, 'click', () => this.view.setActiveTab('public'));
-    bindListener(this.documentRef, APP_ELEMENT_IDS.tabPrivateButton, 'click', () => this.view.setActiveTab('private'));
+    bindListener(this.documentRef, APP_ELEMENT_IDS.tabPublicButton, 'click', () => this.switchTab('public'));
+    bindListener(this.documentRef, APP_ELEMENT_IDS.tabPrivateButton, 'click', () => this.switchTab('private'));
     bindListener(this.documentRef, APP_ELEMENT_IDS.claimSearchInput, 'input', () => this.handleClaimSearch());
     bindListener(this.documentRef, APP_ELEMENT_IDS.loadDrillButton, 'click', () => this.handleLoadDrill());
     bindListener(this.documentRef, APP_ELEMENT_IDS.clearBoardButton, 'click', () => this.handleClearBoard());
   }
 
+  restoreSavedRecords() {
+    const saved = loadBoardState(this.storageRef, this.rules);
+    saved.inspections.forEach((item) => this.analytics.addPropertyInspection(item));
+    saved.triages.forEach((item) => this.analytics.addPopulationTriage(item));
+  }
+
   init() {
+    this.restoreSavedRecords();
     this.bindNavigationEvents();
     bindListener(this.documentRef, APP_ELEMENT_IDS.propertyForm, 'submit', (event) => this.handlePropertySubmit(event));
     bindListener(this.documentRef, APP_ELEMENT_IDS.triageForm, 'submit', (event) => this.handleTriageSubmit(event));
-    this.view.setActiveTab('public');
+    if (this.windowRef) this.windowRef.addEventListener('hashchange', () => this.syncTabFromLocation());
+    this.syncTabFromLocation();
     this.refreshBoard('Board is ready. Load the practice drill or switch to Private Inspector Tool.');
+  }
+
+  syncTabFromLocation() {
+    const locationRef = this.windowRef ? this.windowRef.location : null;
+    this.view.setActiveTab(resolveTabFromHash(locationRef));
+  }
+
+  switchTab(tabKey) {
+    this.view.setActiveTab(tabKey);
+    const locationRef = this.windowRef ? this.windowRef.location : null;
+    syncTabHash(locationRef, tabKey);
   }
 
   getSearchQuery() {
@@ -149,6 +190,7 @@ export class QuakeReliefApp {
 
   refreshBoard(message, isError = false) {
     const query = this.getSearchQuery();
+    saveBoardState(this.storageRef, this.analytics.inspections, this.analytics.triages);
     this.view.renderSnapshot(this.analytics.getDashboardSnapshot(), query);
     this.view.renderSearchResults(this.analytics.findPropertiesByQuery(query), query);
     this.view.renderFeedback(message, isError);
@@ -196,17 +238,18 @@ export class QuakeReliefApp {
 
   handleClearBoard() {
     this.analytics.clearAll();
+    clearBoardState(this.storageRef);
     const searchInput = this.documentRef.getElementById(APP_ELEMENT_IDS.claimSearchInput);
     if (searchInput) searchInput.value = '';
     this.refreshBoard('Board cleared. All 6 Cali sectors are back to Green.');
   }
 }
 
-export async function bootstrapApp(documentRef, fetchClient) {
+export async function bootstrapApp(documentRef, fetchClient, storageRef = null, windowRef = null) {
   const rules = await loadCityRules(fetchClient);
   const analytics = new CityAnalytics(rules);
   const view = new TrafficLightView(documentRef, rules);
-  const app = new QuakeReliefApp(documentRef, analytics, view, rules);
+  const app = new QuakeReliefApp(documentRef, analytics, view, rules, storageRef, windowRef);
   app.init();
   return app;
 }
@@ -214,7 +257,7 @@ export async function bootstrapApp(documentRef, fetchClient) {
 function autoStartBrowser() {
   const isBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
   if (!isBrowser) return;
-  bootstrapApp(document, window.fetch.bind(window)).catch(reportBootError);
+  bootstrapApp(document, window.fetch.bind(window), window.localStorage, window).catch(reportBootError);
 }
 
 autoStartBrowser();

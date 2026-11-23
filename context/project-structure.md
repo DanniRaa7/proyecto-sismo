@@ -26,7 +26,8 @@ cali-quake-relief/
 │
 ├── src/                              # Vanilla JavaScript source (Clean Code + SOLID)
 │   ├── utils/                        # Pure reusable helpers
-│   │   ├── validators.js             # Input validation guards and YAML rank sorting
+│   │   ├── board-storage.js          # Safe localStorage persistence for board reload recovery
+│   │   ├── validators.js             # Input validation guards, unique IDs, and YAML schema checks
 │   │   └── yaml-parser.js            # Zero-dependency YAML parser
 │   ├── models/                       # Single-responsibility domain classes
 │   │   ├── property-inspection.js    # Dual-verdict UDGR + Engineer inspection and claim reconciler

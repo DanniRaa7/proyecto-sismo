@@ -28,6 +28,13 @@ function isActiveYamlLine(line) {
   return hasText && !isComment;
 }
 
+function stripInlineComment(rawValue) {
+  const isQuoted = QUOTE_PATTERN.test(rawValue);
+  if (isQuoted) return rawValue;
+  const commentIndex = rawValue.indexOf(' #');
+  return commentIndex >= 0 ? rawValue.slice(0, commentIndex).trim() : rawValue;
+}
+
 function parseScalarValue(rawValue) {
   const strategy = SCALAR_STRATEGIES.find((item) => item.isMatch(rawValue));
   return strategy ? strategy.parse(rawValue) : rawValue;
@@ -37,8 +44,9 @@ function splitYamlEntry(line) {
   const indent = line.search(/\S/);
   const trimmed = line.trim();
   const colonIndex = trimmed.indexOf(':');
+  if (colonIndex <= 0) throw new Error(`Invalid YAML line: ${trimmed}`);
   const key = trimmed.slice(0, colonIndex).trim();
-  const rawValue = trimmed.slice(colonIndex + 1).trim();
+  const rawValue = stripInlineComment(trimmed.slice(colonIndex + 1).trim());
   return { indent, key, rawValue };
 }
 
@@ -62,11 +70,10 @@ function applyYamlLine(stack, line) {
 }
 
 export function parseYaml(yamlText) {
+  const hasText = typeof yamlText === 'string' && yamlText.trim().length > 0;
+  if (!hasText) throw new Error('Missing required yamlText');
   const root = {};
   const stack = [{ indent: -1, node: root }];
-  yamlText
-    .split(/\r?\n/)
-    .filter(isActiveYamlLine)
-    .forEach((line) => applyYamlLine(stack, line));
+  yamlText.split(/\r?\n/).filter(isActiveYamlLine).forEach((line) => applyYamlLine(stack, line));
   return root;
 }
