@@ -1,106 +1,127 @@
 # Cali Quake Relief System - City Rules and Constants
-# Single source of truth for sectors, UDGR inspections, insurance routes, and triage.
+# Single source of truth for sectors, Engineer damage, UDGR habitability, insurance, and triage.
 
 trafficLights:
   green:
     label: Green - Safe
-    meaning: Safe or standard aid
-    action: Stay calm and follow local updates
+    meaning: Safe for use or standard aid
+    action: Stay calm and follow official city updates
     rank: 1
   yellow:
-    label: Yellow - Caution
-    meaning: Check soon or repair needed
-    action: Limit entry and prepare support
+    label: Yellow - At Risk
+    meaning: Restricted use or needs priority check
+    action: Limit access and prepare technical support
     rank: 2
   red:
-    label: Red - Urgent
-    meaning: Danger or help right now
-    action: Evacuate or send immediate rescue
+    label: Red - Uninhabitable or Urgent
+    meaning: Dangerous building or immediate rescue needed
+    action: Evacuate immediately or dispatch emergency team
     rank: 3
 
 sectors:
   economy:
     label: Economy
-    description: Shops, markets, and local work
+    description: Shops, hotels, and local business hubs
+    alert: Commercial stores and hotels near the epicenter report structural impact
   health:
     label: Health
-    description: Hospitals, clinics, and first aid
+    description: Hospitals, clinics, and emergency rooms
+    alert: Emergency rooms and clinics report heavy patient saturation
   infrastructure:
     label: Infrastructure
-    description: Roads, bridges, water, and power
+    description: Perimeter neighborhood roads, bridges, and utilities
+    alert: Neighborhood perimeter road works prioritized over main avenues
   education:
     label: Education
-    description: Schools and safe learning places
+    description: Schools, classrooms, and student safety
+    alert: Schools moved to virtual classes after classroom block damage
   logistics:
     label: Logistics
-    description: Food, clean water, and aid trucks
+    description: Construction supplies, food, and water trucks
+    alert: Construction material supply shortage slowing city rebuilding
   housing:
     label: Housing
-    description: Homes, apartments, and shelters
+    description: Family homes, apartments, and shelters
+    alert: UDGR and insurers evaluating damaged homes and uninsured risk
 
 propertyTypes:
-  housing:
-    label: Housing
+  residential:
+    label: Residential
   commercial:
     label: Commercial
 
+occupantRoles:
+  owner:
+    label: Owner
+  tenant:
+    label: Tenant
+
+inspectorRoles:
+  civilEngineer:
+    label: Civil Engineer
+  architect:
+    label: Architect
+  topographer:
+    label: Topographer
+  udgrOfficer:
+    label: UDGR Officer
+
 damageLevels:
-  none:
-    label: No Damage
+  superficial:
+    label: Superficial Damage
+    summary: Surface cracks or cosmetic wear without structural failure
+  chronic:
+    label: Chronic Damage
+    summary: Pre-existing wear worsened by the earthquake tremor
+  structural:
+    label: Structural Damage
+    summary: Core columns, beams, or load-bearing walls compromised
+
+habitabilityStatuses:
+  safe:
+    label: Safe for Use
     trafficLight: green
     isHabitable: true
     needsEvacuation: false
-    guidance: Safe to stay inside
-  minor:
-    label: Minor Damage
-    trafficLight: green
-    isHabitable: true
-    needsEvacuation: false
-    guidance: Safe with small repairs
-  moderate:
-    label: Moderate Damage
+    guidance: UDGR cleared this building for normal occupancy
+  atRisk:
+    label: At Risk
     trafficLight: yellow
     isHabitable: false
     needsEvacuation: false
-    guidance: Wait for engineer check before returning
-  severe:
-    label: Severe Damage
+    guidance: Restricted entry until technical repair work is verified
+  uninhabitable:
+    label: Uninhabitable
     trafficLight: red
     isHabitable: false
     needsEvacuation: true
-    guidance: Leave building now and stay clear
-  collapse:
-    label: Structural Collapse
-    trafficLight: red
-    isHabitable: false
-    needsEvacuation: true
-    guidance: Emergency danger zone - keep out
+    guidance: Evacuate immediately and keep building closed
 
 insuranceStatuses:
   insured:
     label: Insured
-    claimRoute: Direct Insurance Claim
-    responsibleAgency: Private Insurer
-    priorityTier: standard
-    nextStep: Send UDGR inspection certificate to your insurance company
+    claimRoute: Direct Insurance Payout
+    responsibleAgency: Private Insurer (Common or Own Policy)
+    isHighFinancialRisk: false
+    nextStep: Submit reconciled Engineer and UDGR report for direct insurance payout
   mortgage:
     label: Mortgage
     claimRoute: Bank Mortgage Disaster Policy
-    responsibleAgency: Lender Bank
-    priorityTier: assisted
-    nextStep: Notify your mortgage bank to activate mandatory quake coverage
+    responsibleAgency: Lender Bank (Primary Beneficiary)
+    isHighFinancialRisk: false
+    nextStep: Bank collects structural insurance payout so mortgage debt stays covered
   leasing:
     label: Leasing
-    claimRoute: Leasing Asset Protection
-    responsibleAgency: Leasing Company
-    priorityTier: assisted
-    nextStep: Contact leasing provider to file damage notice and review payment pause
+    claimRoute: Bank Leasing Structural Policy
+    responsibleAgency: Bank Leasing Owner
+    isHighFinancialRisk: false
+    nextStep: Bank activates leasing structural coverage while ownership transfer pauses
   uninsured:
     label: Uninsured
-    claimRoute: Municipal Relief Subsidy
+    claimRoute: UDGR Emergency Relief Subsidy
     responsibleAgency: UDGR Cali Relief Fund
-    priorityTier: publicAid
-    nextStep: Register with UDGR for public shelter and repair grants
+    isHighFinancialRisk: true
+    nextStep: HIGH FINANCIAL RISK - Route uninsured household to UDGR shelter and aid grant
 
 ageBrackets:
   underTen:
@@ -130,13 +151,13 @@ ageBrackets:
 
 vulnerabilityFlags:
   hasDisability:
-    label: Has Disability
+    label: Disability (Wheelchair / Blind)
     score: 3
   isVulnerable:
-    label: Is Vulnerable
+    label: Vulnerable (Displaced / Violence Victim)
     score: 2
   hasSpecialNeeds:
-    label: Has Special Needs
+    label: Special Needs (Ambulance Only)
     score: 3
 
 populationGroups:

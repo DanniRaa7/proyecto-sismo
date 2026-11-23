@@ -65,6 +65,10 @@ export class PopulationTriage {
     return orderedLights.find((light) => score >= thresholds[light].minScore);
   }
 
+  needsAmbulance() {
+    return Boolean(this.flags.hasSpecialNeeds);
+  }
+
   needsImmediateHelp() {
     return this.getTrafficLight() === URGENT_TRAFFIC_LIGHT;
   }
@@ -75,6 +79,7 @@ export class PopulationTriage {
       fullName: this.fullName,
       sector: this.sector,
       age: this.age,
+      needsAmbulance: this.needsAmbulance(),
       ...this.flags,
     };
   }

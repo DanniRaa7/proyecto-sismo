@@ -51,6 +51,40 @@ body {
   gap: 0.75rem;
 }
 
+.tab-bar {
+  background: #1e293b;
+  padding: 0.65rem 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.tab-btn {
+  border: 2px solid #475569;
+  background: transparent;
+  color: #e2e8f0;
+  border-radius: 10px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tab-active {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #ffffff;
+}
+
+.tab-panel {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.is-hidden {
+  display: none;
+}
+
 .container {
   max-width: 1180px;
   margin: 0 auto;
@@ -176,9 +210,39 @@ body {
   font-size: 0.92rem;
 }
 
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.85rem;
+}
+
+.kpi-card {
+  border: 2px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.kpi-neutral {
+  background: #f8fafc;
+  color: var(--text-main);
+}
+
+.kpi-value {
+  font-size: 1.75rem;
+  font-weight: 800;
+}
+
+.kpi-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .sector-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 0.9rem;
 }
 
@@ -198,14 +262,33 @@ body {
 }
 
 .sector-desc,
-.sector-status,
-.sector-counts {
+.sector-alert,
+.sector-status {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.84rem;
+}
+
+.sector-alert {
+  font-style: italic;
 }
 
 .sector-status {
   font-weight: 700;
+}
+
+.search-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 2px solid var(--border-soft);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
 }
 
 .forms-grid,
@@ -217,21 +300,21 @@ body {
 
 .relief-form {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.5rem;
 }
 
 .relief-form label {
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
 }
 
 .relief-form input[type="text"],
 .relief-form input[type="number"],
 .relief-form select {
-  padding: 0.6rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   border: 2px solid var(--border-soft);
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 0.94rem;
   background: #ffffff;
 }
 
@@ -304,5 +387,5 @@ body {
 .record-action,
 .empty-note {
   margin: 0;
-  font-size: 0.88rem;
+  font-size: 0.87rem;
 }

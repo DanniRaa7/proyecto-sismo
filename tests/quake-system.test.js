@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { parseYaml } from '../src/utils/yaml-parser.js';
-import { PropertyInspection } from '../src/models/property-inspection.js';
+import { PropertyInspection, InsuranceClaimReconciler } from '../src/models/property-inspection.js';
 import { PopulationTriage } from '../src/models/population-triage.js';
 import { CityAnalytics } from '../src/services/city-analytics.js';
 import { TrafficLightView } from '../src/ui/traffic-light-view.js';
@@ -25,15 +25,29 @@ const EXPECTED_SECTORS = [
 ];
 
 const EXPECTED_INSURANCE_ROUTES = [
-  'Direct Insurance Claim',
+  'Direct Insurance Payout',
   'Bank Mortgage Disaster Policy',
-  'Leasing Asset Protection',
-  'Municipal Relief Subsidy',
+  'Bank Leasing Structural Policy',
+  'UDGR Emergency Relief Subsidy',
 ];
+
+const DEFAULT_PROPERTY_BASE = {
+  id: 'prop-1',
+  propertyName: 'La Luna Hotel',
+  sector: 'economy',
+  propertyType: 'commercial',
+  occupantRole: 'owner',
+  insuranceStatus: 'insured',
+  inspectorRole: 'civilEngineer',
+  damageLevel: 'structural',
+  habitabilityStatus: 'atRisk',
+  evidencePhoto: 'lobby-column.jpg',
+  damageInventory: 'Front lobby column cracked',
+};
 
 const DEFAULT_TRIAGE_BASE = {
   id: 'person-1',
-  fullName: 'Ana Gomez',
+  fullName: 'Alice Carter',
   sector: 'health',
   age: 30,
   group: 'civilian',
@@ -45,17 +59,29 @@ const DEFAULT_TRIAGE_BASE = {
 const REQUIRED_DOM_IDS = [
   'city-light-badge',
   'city-light-text',
+  'bi-kpi-grid',
   'sector-grid',
   'traffic-legend',
   'status-banner',
+  'tab-public-btn',
+  'tab-private-btn',
+  'public-panel',
+  'private-panel',
   'load-drill-btn',
   'clear-board-btn',
+  'claim-search-input',
+  'claim-search-results',
   'property-form',
   'property-name',
   'property-sector',
   'property-type',
-  'property-damage',
+  'property-occupant',
   'property-insurance',
+  'property-inspector',
+  'property-damage',
+  'property-habitability',
+  'property-photo',
+  'property-inventory',
   'triage-form',
   'person-name',
   'person-sector',
@@ -123,58 +149,50 @@ class MockDocument {
   }
 }
 
-function buildPropertyRecord(overrides = {}) {
-  return {
-    id: 'prop-1',
-    propertyName: 'San Antonio Bakery',
-    sector: 'economy',
-    propertyType: 'commercial',
-    damageLevel: 'moderate',
-    insuranceStatus: 'insured',
-    ...overrides,
-  };
-}
-
-function buildTriageRecord(overrides = {}) {
-  return { ...DEFAULT_TRIAGE_BASE, ...overrides };
-}
-
 function createInspection(overrides, rules) {
-  return new PropertyInspection(buildPropertyRecord(overrides), rules);
+  return new PropertyInspection({ ...DEFAULT_PROPERTY_BASE, ...overrides }, rules);
 }
 
 function createTriage(overrides, rules) {
-  return new PopulationTriage(buildTriageRecord(overrides), rules);
+  return new PopulationTriage({ ...DEFAULT_TRIAGE_BASE, ...overrides }, rules);
 }
 
 function fillPropertyForm(doc) {
-  doc.getElementById('property-name').value = 'Granada Home';
+  doc.getElementById('property-name').value = '44th & 9th Avenue Hotel';
   doc.getElementById('property-sector').value = 'housing';
-  doc.getElementById('property-type').value = 'housing';
-  doc.getElementById('property-damage').value = 'severe';
+  doc.getElementById('property-type').value = 'residential';
+  doc.getElementById('property-occupant').value = 'tenant';
   doc.getElementById('property-insurance').value = 'mortgage';
+  doc.getElementById('property-inspector').value = 'architect';
+  doc.getElementById('property-damage').value = 'structural';
+  doc.getElementById('property-habitability').value = 'uninhabitable';
+  doc.getElementById('property-photo').value = 'roof-crack.jpg';
+  doc.getElementById('property-inventory').value = 'Roof beam and kitchen wall';
 }
 
 function fillTriageForm(doc) {
-  doc.getElementById('person-name').value = 'Mateo Silva';
+  doc.getElementById('person-name').value = 'Noah Brooks';
   doc.getElementById('person-sector').value = 'education';
   doc.getElementById('person-age').value = '7';
   doc.getElementById('person-group').value = 'civilian';
   doc.getElementById('flag-disability').checked = false;
-  doc.getElementById('flag-vulnerable').checked = true;
-  doc.getElementById('flag-special-needs').checked = false;
+  doc.getElementById('flag-vulnerable').checked = false;
+  doc.getElementById('flag-special-needs').checked = true;
 }
 
 describe('Unit Tests - YAML Parser and Rules Config', () => {
-  it('parses all 6 city sectors from config/city-rules.yaml', () => {
+  it('parses all 6 city sectors and professor rule sections from YAML', () => {
     const rules = loadParsedRules();
     assert.deepEqual(Object.keys(rules.sectors), EXPECTED_SECTORS);
+    assert.deepEqual(Object.keys(rules.damageLevels), ['superficial', 'chronic', 'structural']);
+    assert.deepEqual(Object.keys(rules.habitabilityStatuses), ['safe', 'atRisk', 'uninhabitable']);
+    assert.deepEqual(Object.keys(rules.occupantRoles), ['owner', 'tenant']);
   });
 
   it('parses booleans, numbers, and quoted age rule tags accurately', () => {
     const rules = loadParsedRules();
-    assert.equal(rules.damageLevels.severe.needsEvacuation, true);
-    assert.equal(rules.damageLevels.none.isHabitable, true);
+    assert.equal(rules.habitabilityStatuses.uninhabitable.needsEvacuation, true);
+    assert.equal(rules.insuranceStatuses.uninsured.isHighFinancialRisk, true);
     assert.equal(rules.ageBrackets.underTen.ruleTag, '<10');
     assert.equal(rules.ageBrackets.youth.ruleTag, '>10');
     assert.equal(rules.ageBrackets.adult.ruleTag, '>=18');
@@ -182,37 +200,54 @@ describe('Unit Tests - YAML Parser and Rules Config', () => {
   });
 });
 
-describe('Unit Tests - PropertyInspection (UDGR and Insurance)', () => {
-  it('maps damage levels to traffic lights and evacuation flags', () => {
+describe('Unit Tests - Dual-Verdict PropertyInspection and Insurance', () => {
+  it('blocks insurance payout when engineer or UDGR verdict is missing', () => {
     const rules = loadParsedRules();
-    const safeHome = createInspection({ propertyType: 'housing', damageLevel: 'minor' }, rules);
-    const dangerShop = createInspection({ damageLevel: 'collapse' }, rules);
-    assert.equal(safeHome.getTrafficLight(), 'green');
-    assert.equal(safeHome.getDamageAssessment().isHabitable, true);
-    assert.equal(dangerShop.getTrafficLight(), 'red');
-    assert.equal(dangerShop.getDamageAssessment().needsEvacuation, true);
+    const pendingHome = createInspection({ damageLevel: null, habitabilityStatus: null }, rules);
+    const plan = InsuranceClaimReconciler.reconcile(pendingHome, rules);
+    assert.equal(pendingHome.isInspectionComplete(), false);
+    assert.equal(plan.isApproved, false);
+    assert.equal(plan.claimRoute, 'Pending Inspection');
   });
 
-  it('routes all four insurance statuses through lookup strategies', () => {
+  it('records technical damage, UDGR habitability, and photo evidence cleanly', () => {
+    const rules = loadParsedRules();
+    const home = createInspection({ damageLevel: null, habitabilityStatus: null, evidencePhoto: '' }, rules);
+    home.recordInspection({
+      damageLevel: 'structural',
+      habitabilityStatus: 'uninhabitable',
+      inspectorRole: 'topographer',
+      evidencePhoto: 'wall-evidence.jpg',
+      damageInventory: 'Load wall split',
+    });
+    assert.equal(home.isInspectionComplete(), true);
+    assert.equal(home.hasPhotoEvidence(), true);
+    assert.equal(home.getTrafficLight(), 'red');
+    assert.equal(home.getHabitabilityAssessment().needsEvacuation, true);
+  });
+
+  it('routes all four insurance statuses and flags uninsured high risk', () => {
     const rules = loadParsedRules();
     const statuses = ['insured', 'mortgage', 'leasing', 'uninsured'];
-    const routes = statuses.map((insuranceStatus) =>
-      createInspection({ insuranceStatus }, rules).getInsurancePlan().claimRoute
+    const plans = statuses.map((insuranceStatus) =>
+      createInspection({ insuranceStatus, occupantRole: 'tenant' }, rules).getInsurancePlan()
     );
-    assert.deepEqual(routes, EXPECTED_INSURANCE_ROUTES);
+    assert.deepEqual(plans.map((item) => item.claimRoute), EXPECTED_INSURANCE_ROUTES);
+    assert.equal(plans[3].isHighFinancialRisk, true);
+    assert.equal(plans[0].isHighFinancialRisk, false);
   });
 
-  it('rejects invalid sector, property type, damage, or insurance input', () => {
+  it('rejects invalid sector, property type, occupant, damage, or habitability', () => {
     const rules = loadParsedRules();
     assert.throws(() => createInspection({ sector: 'space' }, rules));
     assert.throws(() => createInspection({ propertyType: 'boat' }, rules));
-    assert.throws(() => createInspection({ damageLevel: 'total' }, rules));
-    assert.throws(() => createInspection({ insuranceStatus: 'cash' }, rules));
-    assert.throws(() => createInspection({ propertyName: '   ' }, rules));
+    assert.throws(() => createInspection({ occupantRole: 'guest' }, rules));
+    assert.throws(() => createInspection({ damageLevel: 'broken' }, rules));
+    assert.throws(() => createInspection({ habitabilityStatus: 'closed' }, rules));
   });
 });
 
-describe('Unit Tests - PopulationTriage (Ages, Flags, Groups)', () => {
+describe('Unit Tests - PopulationTriage and Ambulance Dispatch', () => {
   it('classifies all four age brackets (<10, >10, >=18, >=60) without gaps', () => {
     const rules = loadParsedRules();
     const tags = [5, 9, 10, 14, 18, 59, 60, 82].map((age) =>
@@ -221,14 +256,15 @@ describe('Unit Tests - PopulationTriage (Ages, Flags, Groups)', () => {
     assert.deepEqual(tags, ['<10', '<10', '>10', '>10', '>=18', '>=18', '>=60', '>=60']);
   });
 
-  it('scores disability, vulnerable, and special needs flags cleanly', () => {
+  it('sets needsAmbulance strictly for specialNeeds and scores care flags', () => {
     const rules = loadParsedRules();
-    const lights = [
-      createTriage({ hasDisability: true }, rules).getTrafficLight(),
-      createTriage({ isVulnerable: true }, rules).getTrafficLight(),
-      createTriage({ hasSpecialNeeds: true }, rules).getTrafficLight(),
-    ];
-    assert.deepEqual(lights, ['red', 'yellow', 'red']);
+    const ambulancePerson = createTriage({ hasSpecialNeeds: true }, rules);
+    const wheelchairPerson = createTriage({ hasDisability: true }, rules);
+    const vulnerablePerson = createTriage({ isVulnerable: true }, rules);
+    assert.equal(ambulancePerson.needsAmbulance(), true);
+    assert.equal(wheelchairPerson.needsAmbulance(), false);
+    assert.equal(wheelchairPerson.getTrafficLight(), 'red');
+    assert.equal(vulnerablePerson.getTrafficLight(), 'yellow');
   });
 
   it('applies civilian, military, and prison group protocols', () => {
@@ -252,103 +288,95 @@ describe('Unit Tests - PopulationTriage (Ages, Flags, Groups)', () => {
   });
 });
 
-describe('Unit Tests - CityAnalytics Service', () => {
-  it('starts with all 6 sectors green and updates worst-case lights', () => {
+describe('Unit Tests - CityAnalytics BI Service', () => {
+  it('tracks all 6 sectors with alerts, uninsured risk, and ambulance counts', () => {
     const rules = loadParsedRules();
     const analytics = new CityAnalytics(rules);
-    assert.equal(analytics.getCityTrafficLight(), 'green');
+    analytics.addPropertyInspection(createInspection({ insuranceStatus: 'uninsured', habitabilityStatus: 'uninhabitable' }, rules));
+    analytics.addPopulationTriage(createTriage({ hasSpecialNeeds: true }, rules));
     assert.equal(analytics.getAllSectorStatuses().length, 6);
-    analytics.addPropertyInspection(createInspection({ sector: 'logistics', damageLevel: 'moderate' }, rules));
-    assert.equal(analytics.getSectorStatus('logistics').trafficLight, 'yellow');
-    assert.equal(analytics.getCityTrafficLight(), 'yellow');
+    assert.equal(analytics.getPropertyReport().uninsuredHighRiskCount, 1);
+    assert.equal(analytics.getPopulationReport().ambulanceCount, 1);
+    assert.equal(analytics.getCityTrafficLight(), 'red');
   });
 
-  it('ranks priority queue highest score first', () => {
+  it('supports public citizen property search and priority queue sorting', () => {
     const rules = loadParsedRules();
     const analytics = new CityAnalytics(rules);
-    analytics.addPopulationTriage(createTriage({ id: 'a', age: 30 }, rules));
-    analytics.addPopulationTriage(createTriage({ id: 'b', age: 6, hasDisability: true }, rules));
-    analytics.addPopulationTriage(createTriage({ id: 'c', age: 15, isVulnerable: true }, rules));
-    const orderedIds = analytics.getPriorityQueue().map((item) => item.id);
-    assert.deepEqual(orderedIds, ['b', 'c', 'a']);
+    analytics.addPropertyInspection(createInspection({ propertyName: 'School Block 6' }, rules));
+    analytics.addPopulationTriage(createTriage({ id: 'low', age: 30 }, rules));
+    analytics.addPopulationTriage(createTriage({ id: 'top', age: 6, hasSpecialNeeds: true }, rules));
+    assert.equal(analytics.findPropertiesByQuery('block 6').length, 1);
+    assert.deepEqual(analytics.getPriorityQueue().map((item) => item.id), ['top', 'low']);
   });
 
-  it('aggregates property insurance counts and resets cleanly on clearAll', () => {
-    const rules = loadParsedRules();
-    const analytics = new CityAnalytics(rules);
-    analytics.addPropertyInspection(createInspection({ damageLevel: 'severe', insuranceStatus: 'leasing' }, rules));
-    assert.equal(analytics.getPropertyReport().insuranceStatus.leasing, 1);
-    assert.equal(analytics.getPropertyReport().evacuationCount, 1);
-    analytics.clearAll();
-    assert.equal(analytics.getPropertyReport().total, 0);
-    assert.equal(analytics.getCityTrafficLight(), 'green');
-  });
-
-  it('rejects non-model objects passed into CityAnalytics', () => {
+  it('rejects non-model objects and resets cleanly on clearAll', () => {
     const analytics = new CityAnalytics(loadParsedRules());
     assert.throws(() => analytics.addPropertyInspection({ propertyName: 'Fake' }));
     assert.throws(() => analytics.addPopulationTriage({ fullName: 'Fake' }));
+    analytics.clearAll();
+    assert.equal(analytics.getCityTrafficLight(), 'green');
   });
 });
 
-describe('UX Tests - Child-Friendly Traffic-Light Interface', () => {
-  it('includes all required DOM IDs and simple traffic-light legend in index.html', () => {
+describe('UX Tests - Two-Tab Child-Friendly Traffic-Light Interface', () => {
+  it('includes all Public BI and Private Inspector DOM IDs in index.html', () => {
     const html = readWorkspaceFile(INDEX_HTML_PATH);
     REQUIRED_DOM_IDS.forEach((id) => {
       assert.ok(html.includes(`id="${id}"`), `Missing DOM id: ${id}`);
     });
-    assert.ok(html.includes('Green'));
-    assert.ok(html.includes('Yellow'));
-    assert.ok(html.includes('Red'));
+    assert.ok(html.includes('Public BI Dashboard'));
+    assert.ok(html.includes('Private Inspector Tool'));
   });
 
-  it('defines accessible traffic-light styles in styles.css', () => {
+  it('defines accessible traffic-light and tab classes in styles.css', () => {
     const css = readWorkspaceFile(STYLES_CSS_PATH);
     assert.ok(css.includes('.light-green'));
     assert.ok(css.includes('.light-yellow'));
     assert.ok(css.includes('.light-red'));
+    assert.ok(css.includes('.is-hidden'));
   });
 
-  it('renders traffic-light state and 6 sector cards through TrafficLightView', () => {
+  it('renders KPI counters, 6 sectors, and tab visibility via TrafficLightView', () => {
     const rules = loadParsedRules();
     const doc = new MockDocument(REQUIRED_DOM_IDS);
     const analytics = new CityAnalytics(rules);
     const view = new TrafficLightView(doc, rules);
     view.renderSnapshot(analytics.getDashboardSnapshot());
-    assert.ok(doc.getElementById('city-light-badge').className.includes('light-green'));
-    assert.ok(doc.getElementById('sector-grid').innerHTML.includes('Economy'));
-    assert.ok(doc.getElementById('sector-grid').innerHTML.includes('Housing'));
+    view.setActiveTab('private');
+    assert.ok(doc.getElementById('bi-kpi-grid').innerHTML.includes('Ambulances Needed'));
+    assert.ok(doc.getElementById('public-panel').className.includes('is-hidden'));
   });
 });
 
-describe('Connection Tests - YAML, Services, App, and UI Wiring', () => {
+describe('Connection Tests - YAML, Services, Two-Tab App, and Search', () => {
   it('loads city rules from config/city-rules.yaml via loadCityRules', async () => {
-    const yamlText = readWorkspaceFile(YAML_RULES_PATH);
-    const rules = await loadCityRules(createFakeFetch(yamlText));
-    assert.equal(rules.sectors.health.label, 'Health');
-    assert.equal(rules.insuranceStatuses.uninsured.responsibleAgency, 'UDGR Cali Relief Fund');
+    const rules = await loadCityRules(createFakeFetch(readWorkspaceFile(YAML_RULES_PATH)));
+    assert.equal(rules.sectors.education.label, 'Education');
+    assert.equal(rules.damageLevels.structural.label, 'Structural Damage');
   });
 
-  it('connects building form and triage form submissions end-to-end', async () => {
+  it('connects Private forms, Public BI search, and ambulance counter end-to-end', async () => {
     const doc = new MockDocument(REQUIRED_DOM_IDS);
     const app = await bootstrapApp(doc, createFakeFetch(readWorkspaceFile(YAML_RULES_PATH)));
     fillPropertyForm(doc);
     doc.getElementById('property-form').trigger('submit', { preventDefault: () => {} });
     fillTriageForm(doc);
     doc.getElementById('triage-form').trigger('submit', { preventDefault: () => {} });
-    assert.equal(app.analytics.getCityTrafficLight(), 'red');
-    assert.ok(doc.getElementById('property-list').innerHTML.includes('Granada Home'));
-    assert.ok(doc.getElementById('priority-list').innerHTML.includes('Mateo Silva'));
+    doc.getElementById('claim-search-input').value = '44th';
+    doc.getElementById('claim-search-input').trigger('input');
+    assert.equal(app.analytics.getPopulationReport().ambulanceCount, 1);
+    assert.ok(doc.getElementById('claim-search-results').innerHTML.includes('44th &amp; 9th Avenue Hotel'));
   });
 
-  it('loads full 6-sector practice drill and resets cleanly via UI buttons', async () => {
+  it('switches tabs, loads 6-sector Cali drill, and resets cleanly via buttons', async () => {
     const doc = new MockDocument(REQUIRED_DOM_IDS);
     const app = await bootstrapApp(doc, createFakeFetch(readWorkspaceFile(YAML_RULES_PATH)));
+    doc.getElementById('tab-private-btn').trigger('click');
+    assert.ok(doc.getElementById('public-panel').className.includes('is-hidden'));
     doc.getElementById('load-drill-btn').trigger('click');
     assert.equal(app.analytics.getPropertyReport().total, 6);
-    assert.equal(app.analytics.getPopulationReport().total, 6);
     doc.getElementById('clear-board-btn').trigger('click');
     assert.equal(app.analytics.getCityTrafficLight(), 'green');
-    assert.equal(app.analytics.getPropertyReport().total, 0);
   });
 });

@@ -7,12 +7,20 @@ import { TrafficLightView } from './ui/traffic-light-view.js';
 const DEFAULT_RULES_PATH = './config/city-rules.yaml';
 
 const APP_ELEMENT_IDS = {
+  tabPublicButton: 'tab-public-btn',
+  tabPrivateButton: 'tab-private-btn',
+  claimSearchInput: 'claim-search-input',
   propertyForm: 'property-form',
   propertyName: 'property-name',
   propertySector: 'property-sector',
   propertyType: 'property-type',
-  propertyDamage: 'property-damage',
+  propertyOccupant: 'property-occupant',
   propertyInsurance: 'property-insurance',
+  propertyInspector: 'property-inspector',
+  propertyDamage: 'property-damage',
+  propertyHabitability: 'property-habitability',
+  propertyPhoto: 'property-photo',
+  propertyInventory: 'property-inventory',
   triageForm: 'triage-form',
   personName: 'person-name',
   personSector: 'person-sector',
@@ -27,12 +35,12 @@ const APP_ELEMENT_IDS = {
 };
 
 const SAMPLE_PROPERTY_RECORDS = [
-  { id: 'drill-property-1', propertyName: 'West City Market', sector: 'economy', propertyType: 'commercial', damageLevel: 'moderate', insuranceStatus: 'leasing' },
-  { id: 'drill-property-2', propertyName: 'Central Clinic Annex', sector: 'health', propertyType: 'commercial', damageLevel: 'minor', insuranceStatus: 'insured' },
-  { id: 'drill-property-3', propertyName: 'North Bridge Depot', sector: 'infrastructure', propertyType: 'commercial', damageLevel: 'severe', insuranceStatus: 'insured' },
-  { id: 'drill-property-4', propertyName: 'Valley Primary School', sector: 'education', propertyType: 'commercial', damageLevel: 'none', insuranceStatus: 'uninsured' },
-  { id: 'drill-property-5', propertyName: 'South Aid Warehouse', sector: 'logistics', propertyType: 'commercial', damageLevel: 'minor', insuranceStatus: 'leasing' },
-  { id: 'drill-property-6', propertyName: 'Hillside Family Home', sector: 'housing', propertyType: 'housing', damageLevel: 'collapse', insuranceStatus: 'mortgage' },
+  { id: 'drill-property-1', propertyName: 'La Luna Hotel', sector: 'economy', propertyType: 'commercial', occupantRole: 'owner', insuranceStatus: 'insured', inspectorRole: 'civilEngineer', damageLevel: 'structural', habitabilityStatus: 'atRisk', evidencePhoto: 'hotel-column.jpg', damageInventory: 'Lobby columns and glass facade' },
+  { id: 'drill-property-2', propertyName: 'Central Hospital Annex', sector: 'health', propertyType: 'commercial', occupantRole: 'owner', insuranceStatus: 'insured', inspectorRole: 'architect', damageLevel: 'superficial', habitabilityStatus: 'safe', evidencePhoto: 'er-wing.jpg', damageInventory: 'Minor wall plaster cracks' },
+  { id: 'drill-property-3', propertyName: 'Perimeter Road Depot', sector: 'infrastructure', propertyType: 'commercial', occupantRole: 'tenant', insuranceStatus: 'leasing', inspectorRole: 'topographer', damageLevel: 'chronic', habitabilityStatus: 'atRisk', evidencePhoto: 'road-slope.jpg', damageInventory: 'Side road curbing shifted' },
+  { id: 'drill-property-4', propertyName: 'School Block 6', sector: 'education', propertyType: 'commercial', occupantRole: 'owner', insuranceStatus: 'insured', inspectorRole: 'civilEngineer', damageLevel: 'structural', habitabilityStatus: 'uninhabitable', evidencePhoto: 'block6-stairs.jpg', damageInventory: 'Second-floor classrooms closed' },
+  { id: 'drill-property-5', propertyName: 'South Supply Warehouse', sector: 'logistics', propertyType: 'commercial', occupantRole: 'tenant', insuranceStatus: 'leasing', inspectorRole: 'udgrOfficer', damageLevel: 'superficial', habitabilityStatus: 'safe', evidencePhoto: 'storage-bay.jpg', damageInventory: 'Cement pallets intact' },
+  { id: 'drill-property-6', propertyName: 'Hillside Family Home', sector: 'housing', propertyType: 'residential', occupantRole: 'owner', insuranceStatus: 'uninsured', inspectorRole: 'udgrOfficer', damageLevel: 'structural', habitabilityStatus: 'uninhabitable', evidencePhoto: 'home-roof.jpg', damageInventory: 'Roof truss and bedrooms damaged' },
 ];
 
 const SAMPLE_TRIAGE_RECORDS = [
@@ -60,14 +68,28 @@ export function createSampleDrill(rules) {
   };
 }
 
-function readPropertyForm(documentRef) {
+function readPropertyIdentity(documentRef) {
   return {
     propertyName: documentRef.getElementById(APP_ELEMENT_IDS.propertyName).value,
     sector: documentRef.getElementById(APP_ELEMENT_IDS.propertySector).value,
     propertyType: documentRef.getElementById(APP_ELEMENT_IDS.propertyType).value,
-    damageLevel: documentRef.getElementById(APP_ELEMENT_IDS.propertyDamage).value,
+    occupantRole: documentRef.getElementById(APP_ELEMENT_IDS.propertyOccupant).value,
     insuranceStatus: documentRef.getElementById(APP_ELEMENT_IDS.propertyInsurance).value,
   };
+}
+
+function readInspectionInput(documentRef) {
+  return {
+    inspectorRole: documentRef.getElementById(APP_ELEMENT_IDS.propertyInspector).value,
+    damageLevel: documentRef.getElementById(APP_ELEMENT_IDS.propertyDamage).value,
+    habitabilityStatus: documentRef.getElementById(APP_ELEMENT_IDS.propertyHabitability).value,
+    evidencePhoto: documentRef.getElementById(APP_ELEMENT_IDS.propertyPhoto).value,
+    damageInventory: documentRef.getElementById(APP_ELEMENT_IDS.propertyInventory).value,
+  };
+}
+
+function readPropertyForm(documentRef) {
+  return { ...readPropertyIdentity(documentRef), ...readInspectionInput(documentRef) };
 }
 
 function readTriageForm(documentRef) {
@@ -102,17 +124,30 @@ export class QuakeReliefApp {
     this.rules = rules;
   }
 
-  init() {
-    bindListener(this.documentRef, APP_ELEMENT_IDS.propertyForm, 'submit', (event) => this.handlePropertySubmit(event));
-    bindListener(this.documentRef, APP_ELEMENT_IDS.triageForm, 'submit', (event) => this.handleTriageSubmit(event));
+  bindNavigationEvents() {
+    bindListener(this.documentRef, APP_ELEMENT_IDS.tabPublicButton, 'click', () => this.view.setActiveTab('public'));
+    bindListener(this.documentRef, APP_ELEMENT_IDS.tabPrivateButton, 'click', () => this.view.setActiveTab('private'));
+    bindListener(this.documentRef, APP_ELEMENT_IDS.claimSearchInput, 'input', () => this.handleClaimSearch());
     bindListener(this.documentRef, APP_ELEMENT_IDS.loadDrillButton, 'click', () => this.handleLoadDrill());
     bindListener(this.documentRef, APP_ELEMENT_IDS.clearBoardButton, 'click', () => this.handleClearBoard());
-    this.refreshBoard('Board is ready. All 6 Cali sectors are currently Green.');
+  }
+
+  init() {
+    this.bindNavigationEvents();
+    bindListener(this.documentRef, APP_ELEMENT_IDS.propertyForm, 'submit', (event) => this.handlePropertySubmit(event));
+    bindListener(this.documentRef, APP_ELEMENT_IDS.triageForm, 'submit', (event) => this.handleTriageSubmit(event));
+    this.view.setActiveTab('public');
+    this.refreshBoard('Board is ready. Switch tabs to view Public BI or log Private field inspections.');
   }
 
   refreshBoard(message, isError = false) {
     this.view.renderSnapshot(this.analytics.getDashboardSnapshot());
     this.view.renderFeedback(message, isError);
+  }
+
+  handleClaimSearch() {
+    const query = this.documentRef.getElementById(APP_ELEMENT_IDS.claimSearchInput).value;
+    this.view.renderSearchResults(this.analytics.findPropertiesByQuery(query));
   }
 
   runFormAction(event, formId, action, successMessage) {
@@ -131,7 +166,7 @@ export class QuakeReliefApp {
       const record = readPropertyForm(this.documentRef);
       this.analytics.addPropertyInspection(new PropertyInspection(record, this.rules));
     };
-    this.runFormAction(event, APP_ELEMENT_IDS.propertyForm, addInspection, 'Building inspection added to the relief board.');
+    this.runFormAction(event, APP_ELEMENT_IDS.propertyForm, addInspection, 'Dual-verdict inspection saved and insurance claim reconciled.');
   }
 
   handleTriageSubmit(event) {
@@ -139,7 +174,7 @@ export class QuakeReliefApp {
       const record = readTriageForm(this.documentRef);
       this.analytics.addPopulationTriage(new PopulationTriage(record, this.rules));
     };
-    this.runFormAction(event, APP_ELEMENT_IDS.triageForm, addTriage, 'Person added to the priority triage queue.');
+    this.runFormAction(event, APP_ELEMENT_IDS.triageForm, addTriage, 'Citizen added to the priority triage and ambulance queue.');
   }
 
   handleLoadDrill() {
@@ -147,12 +182,12 @@ export class QuakeReliefApp {
     const drill = createSampleDrill(this.rules);
     drill.inspections.forEach((item) => this.analytics.addPropertyInspection(item));
     drill.triages.forEach((item) => this.analytics.addPopulationTriage(item));
-    this.refreshBoard('Practice drill loaded across all 6 Cali sectors.');
+    this.refreshBoard('Cali earthquake practice drill loaded across all 6 sectors.');
   }
 
   handleClearBoard() {
     this.analytics.clearAll();
-    this.refreshBoard('Board cleared. All 6 sectors are back to Green.');
+    this.refreshBoard('Board cleared. All 6 Cali sectors are back to Green.');
   }
 }
 
