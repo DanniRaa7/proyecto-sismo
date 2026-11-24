@@ -347,53 +347,56 @@ select:focus-visible {
   font-size: var(--text-sm);
 }
 
-/* KPI Grid (Clean Surfaces + Crisp Semantic Accent) */
+/* KPI Grid (Clean Surfaces + Crisp Inset Semantic Accent) */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: var(--space-3);
 }
 
 .kpi-card {
+  min-width: 0;
+  overflow: hidden;
   background: var(--surface-card);
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
-  border-top: 4px solid var(--border-strong);
   border-radius: var(--radius-md);
-  padding: var(--space-4);
-  display: grid;
+  padding: calc(var(--space-4) + 2px) var(--space-4) var(--space-4);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-1);
+  box-shadow: inset 0 4px 0 0 var(--border-strong);
 }
 
 .kpi-card.kpi-neutral {
-  border-top-color: var(--brand-primary);
+  box-shadow: inset 0 4px 0 0 var(--brand-primary);
 }
 
 .kpi-card.light-green {
   background: var(--surface-card);
   color: var(--text-primary);
   border-color: var(--border-subtle);
-  border-top-color: var(--status-green-solid);
+  box-shadow: inset 0 4px 0 0 var(--status-green-solid);
 }
 
 .kpi-card.light-yellow {
   background: var(--surface-card);
   color: var(--text-primary);
   border-color: var(--border-subtle);
-  border-top-color: var(--status-yellow-solid);
+  box-shadow: inset 0 4px 0 0 var(--status-yellow-solid);
 }
 
 .kpi-card.light-red {
   background: var(--surface-card);
   color: var(--text-primary);
   border-color: var(--border-subtle);
-  border-top-color: var(--status-red-solid);
+  box-shadow: inset 0 4px 0 0 var(--status-red-solid);
 }
 
 .kpi-card.kpi-alert-active {
   background: var(--status-red-soft);
   border-color: var(--status-red-border);
-  border-top-color: var(--status-red-solid);
+  box-shadow: inset 0 4px 0 0 var(--status-red-solid);
 }
 
 .kpi-value {
@@ -421,52 +424,64 @@ select:focus-visible {
   color: var(--text-secondary);
 }
 
-/* 6 Sector Cards (Calm White + 5px Traffic-Light Strip) */
+/* 6 Sector Cards (Symmetric 3x2 Grid + Clean Inset Accent Strip) */
 .sector-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
 .sector-card {
+  min-width: 0;
+  overflow: hidden;
   background: var(--surface-card);
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
-  border-left: 5px solid var(--status-green-solid);
   border-radius: var(--radius-md);
-  padding: var(--space-4);
-  display: grid;
-  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) var(--space-4) calc(var(--space-4) + 5px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  box-shadow: inset 5px 0 0 0 var(--status-green-solid);
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
-}
-
-.sector-card:hover {
-  box-shadow: var(--shadow-hover);
 }
 
 .sector-card.light-green {
   border-color: var(--border-subtle);
-  border-left-color: var(--status-green-solid);
   background: var(--surface-card);
   color: var(--text-primary);
+  box-shadow: inset 5px 0 0 0 var(--status-green-solid);
 }
 
 .sector-card.light-yellow {
   border-color: var(--border-subtle);
-  border-left-color: var(--status-yellow-solid);
   background: var(--surface-card);
   color: var(--text-primary);
+  box-shadow: inset 5px 0 0 0 var(--status-yellow-solid);
 }
 
 .sector-card.light-red {
   border-color: var(--status-red-border);
-  border-left-color: var(--status-red-solid);
   background: #fffafa;
   color: var(--text-primary);
+  box-shadow: inset 5px 0 0 0 var(--status-red-solid);
+}
+
+.sector-card.light-green:hover {
+  box-shadow: inset 5px 0 0 0 var(--status-green-solid), var(--shadow-hover);
+}
+
+.sector-card.light-yellow:hover {
+  box-shadow: inset 5px 0 0 0 var(--status-yellow-solid), var(--shadow-hover);
+}
+
+.sector-card.light-red:hover {
+  box-shadow: inset 5px 0 0 0 var(--status-red-solid), var(--shadow-hover);
 }
 
 .sector-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2);
@@ -495,7 +510,9 @@ select:focus-visible {
 }
 
 .sector-counts {
-  margin: 0;
+  margin: auto 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--text-secondary);
@@ -728,41 +745,51 @@ select:focus-visible {
 }
 
 .record-card {
+  min-width: 0;
+  overflow: hidden;
   background: var(--surface-card);
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
-  border-left: 5px solid var(--status-green-solid);
   border-radius: var(--radius-md);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-4) calc(var(--space-4) + 5px);
   display: grid;
   gap: var(--space-2);
   overflow-wrap: break-word;
+  box-shadow: inset 5px 0 0 0 var(--status-green-solid);
   transition: box-shadow var(--transition-fast);
-}
-
-.record-card:hover {
-  box-shadow: var(--shadow-hover);
 }
 
 .record-card.light-green {
   border-color: var(--border-subtle);
-  border-left-color: var(--status-green-solid);
   background: var(--surface-card);
   color: var(--text-primary);
+  box-shadow: inset 5px 0 0 0 var(--status-green-solid);
 }
 
 .record-card.light-yellow {
   border-color: var(--border-subtle);
-  border-left-color: var(--status-yellow-solid);
   background: var(--surface-card);
   color: var(--text-primary);
+  box-shadow: inset 5px 0 0 0 var(--status-yellow-solid);
 }
 
 .record-card.light-red {
   border-color: var(--status-red-border);
-  border-left-color: var(--status-red-solid);
   background: #fffafa;
   color: var(--text-primary);
+  box-shadow: inset 5px 0 0 0 var(--status-red-solid);
+}
+
+.record-card.light-green:hover {
+  box-shadow: inset 5px 0 0 0 var(--status-green-solid), var(--shadow-hover);
+}
+
+.record-card.light-yellow:hover {
+  box-shadow: inset 5px 0 0 0 var(--status-yellow-solid), var(--shadow-hover);
+}
+
+.record-card.light-red:hover {
+  box-shadow: inset 5px 0 0 0 var(--status-red-solid), var(--shadow-hover);
 }
 
 .record-head {
@@ -779,12 +806,15 @@ select:focus-visible {
 }
 
 .pill {
+  max-width: 100%;
   font-size: var(--text-xs);
   font-weight: 700;
+  line-height: 1.25;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
   border: 1px solid;
-  white-space: nowrap;
+  text-align: center;
+  overflow-wrap: break-word;
 }
 
 .tag-urgent {
@@ -833,6 +863,17 @@ select:focus-visible {
   font-size: var(--text-sm);
 }
 
+/* Tablet Responsive Breakpoints (641px - 1024px) */
+@media (max-width: 1024px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sector-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Mobile Responsive Refinements (375px - 640px) */
 @media (max-width: 640px) {
   .hero,
@@ -867,6 +908,10 @@ select:focus-visible {
 
   .kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sector-grid {
+    grid-template-columns: 1fr;
   }
 }
 

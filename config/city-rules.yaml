@@ -13,7 +13,7 @@ trafficLights:
     action: Limit access and prepare technical support
     rank: 2
   red:
-    label: Red - Uninhabitable or Urgent
+    label: Red - Urgent
     meaning: Dangerous building or immediate rescue needed
     action: Evacuate immediately or dispatch emergency team
     rank: 3
